@@ -1,0 +1,88 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import connectDB from "@/lib/db";
+import Document from "@/models/Document";
+import { extractTextFromPDF } from "@/lib/pdf";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export async function POST(request: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("multipart/form-data")) {
+      // PDF upload
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+
+      if (!file) {
+        return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: "File too large. Maximum 10MB" }, { status: 400 });
+      }
+
+      if (file.type !== "application/pdf") {
+        return NextResponse.json({ error: "Only PDF files are supported" }, { status: 400 });
+      }
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const rawText = await extractTextFromPDF(buffer);
+
+      if (!rawText || rawText.trim().length === 0) {
+        return NextResponse.json({ error: "Could not extract text from PDF" }, { status: 400 });
+      }
+
+      const title = formData.get("title") as string || file.name.replace(".pdf", "");
+
+      const doc = await Document.create({
+        userId: session.user.id,
+        title,
+        originalFilename: file.name,
+        fileType: "pdf",
+        rawText,
+        status: "ready",
+      });
+
+      return NextResponse.json(
+        { message: "Document uploaded successfully", document: doc },
+        { status: 201 }
+      );
+    } else {
+      // Text paste
+      const { title, content } = await request.json();
+
+      if (!title || !content) {
+        return NextResponse.json({ error: "Title and content are required" }, { status: 400 });
+      }
+
+      if (content.length < 10) {
+        return NextResponse.json({ error: "Content must be at least 10 characters" }, { status: 400 });
+      }
+
+      const doc = await Document.create({
+        userId: session.user.id,
+        title,
+        fileType: "text",
+        rawText: content,
+        status: "ready",
+      });
+
+      return NextResponse.json(
+        { message: "Document created successfully", document: doc },
+        { status: 201 }
+      );
+    }
+  } catch (error) {
+    console.error("Upload error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
