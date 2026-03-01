@@ -7,6 +7,10 @@ const UserSchema = new Schema(
     password: { type: String, required: true, select: false },
     image: { type: String },
     bio: { type: String, default: "" },
+    currentStreak: { type: Number, default: 0 },
+    longestStreak: { type: Number, default: 0 },
+    lastReviewDate: { type: Date },
+    totalStudyMinutes: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

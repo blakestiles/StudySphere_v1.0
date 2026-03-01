@@ -3,11 +3,13 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** February 9, 2026
+**Date:** February 17, 2026
 
 ---
 
 ## 1. Progress
+
+### Weeks 1-5: Foundation (Completed Feb. 9, 2026)
 
 I completed the full foundation of the StudySphere application covering authentication, document management, and the dashboard interface, all implemented with Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui, NextAuth.js v5, and MongoDB with Mongoose.
 
@@ -17,11 +19,37 @@ I completed the full foundation of the StudySphere application covering authenti
 
 **Document management:** I built a document listing API that returns all user documents sorted by upload date (excluding the raw text field to reduce payload size) and a document delete API with cascade deletion. When a document is deleted, the system first finds all related StudyPacks, then deletes their associated Topics, Flashcards, and QuizQuestions in parallel, then deletes the StudyPacks, and finally deletes the document itself. The dashboard displays the 5 most recent documents with a trash icon that opens a confirmation dialog before deletion.
 
-**Dashboard:** I built the main dashboard as a server component that fetches data directly from MongoDB using `Promise.all()` for parallel queries. It shows three statistics cards (document count, study pack count, quiz attempts taken) and the recent documents list. The page serializes Mongoose lean documents before passing them to client components.
+**Dashboard:** I built the main dashboard as a server component that fetches data directly from MongoDB using `Promise.all()` for parallel queries. It shows statistics cards and the recent documents list. The page serializes Mongoose lean documents before passing them to client components.
 
 **Database schema:** I designed and implemented all 10 Mongoose models covering the full data lifecycle — User, Document, StudyPack, Topic (with self-referencing hierarchy), Flashcard (with difficulty levels), QuizQuestion (multiple-choice with explanations), QuizAttempt (with per-question response tracking), FocusSession (with goals and recaps), and WeakArea (with severity levels). These models are interconnected through MongoDB ObjectId references.
 
-**Landing page and layout:** I created a public landing page with a hero section, feature cards, and call-to-action buttons. The authenticated layout includes a sticky top navbar with user account actions and a fixed sidebar with navigation links (Dashboard, Upload, Study Packs, Profile) that highlights the active route.
+**Landing page and layout:** I created a public landing page with a hero section, feature cards, and call-to-action buttons. The authenticated layout includes a sticky top navbar with user account actions and a fixed sidebar with navigation links that highlights the active route.
+
+### Week 6: AI Study Pack Generation (Completed Feb. 17, 2026)
+
+I integrated the Anthropic Claude API to power the core AI features of the application. The study pack generation system takes a user's uploaded document and produces a comprehensive, structured study pack.
+
+**Claude API integration:** I created a singleton Anthropic client (`src/lib/claude.ts`) and a dedicated study pack generator module (`src/lib/study-pack-generator.ts`). The generator sends the document text (truncated to 100,000 characters) to `claude-sonnet-4-20250514` with a detailed prompt that instructs the model to produce a JSON object containing summaries, topics, flashcards, and quiz questions. The response parsing handles markdown code fences, validates the JSON structure, and provides clear error messages for various failure modes (missing API key, empty response, parse failures).
+
+**Generation endpoint:** The `POST /api/study-packs/generate` route creates a StudyPack record with `status: "generating"` before calling the AI, giving users immediate feedback. After successful generation, it creates all Topic, Flashcard, and QuizQuestion records in bulk using `insertMany()`, then updates the pack to `status: "ready"`. If generation fails, it catches the error and sets `status: "error"` while returning a descriptive error message.
+
+**Study pack viewer:** I built a tabbed detail page (`/study-packs/[id]`) with 5 tabs: Summary, Topics, Flashcards, Quiz, and AI Tutor. The page handles generating/error/ready states with appropriate UI. The FlashcardViewer component features a 3D flip animation using CSS transforms, difficulty filtering, and Previous/Next navigation. I also built a study packs listing page (`/study-packs`) with a responsive card grid showing status badges.
+
+**Generate button:** The `GenerateButton` component appears on each document in the dashboard. It conditionally shows "Generate Study Pack" or "View Study Pack" depending on whether a pack already exists for that document. During generation, it shows a spinner with a "this may take a minute" message.
+
+### Weeks 7-8: Quizzes, Weak Areas, Focus Mode & AI Tutor (Completed Feb. 17, 2026)
+
+I implemented the remaining interactive study features to complete the core application functionality.
+
+**Quiz system:** I built an interactive quiz-taking interface (`QuizInterface.tsx`) that presents questions one at a time with A/B/C/D options, a progress bar, and Previous/Next navigation. On submission, answers are sent to `POST /api/study-packs/[id]/quiz` which scores them against the stored correct answers and creates a `QuizAttempt` record. The `QuizResults` component shows the score with color coding (green >80%, yellow >50%, red ≤50%), followed by a detailed question-by-question review showing the correct answer, the user's answer (with strikethrough if wrong), and explanations for incorrect answers. A "Try Again" button resets the quiz.
+
+**Weak area detection:** After each quiz submission, the client triggers `POST /api/weak-areas/analyze` with the attempt ID. The endpoint groups wrong answers by topic, calculates the wrong-answer percentage, and classifies severity as high (>66%), medium (33-66%), or low (≤33%). It upserts `WeakArea` records per topic so repeated quizzes update existing entries. The dashboard's `WeakAreasList` component displays these with color-coded severity badges and links to the relevant study pack.
+
+**Focus mode:** I built a 3-phase focus session system (`FocusMode.tsx`). In the setup phase, users select a study pack, choose a duration (15/30/45/60 minute presets or custom), and define study goals. Starting a session creates a `FocusSession` record via the API. The active phase shows a countdown timer (using `setInterval` with cleanup) and a goal checklist where users can toggle goals as completed. The complete phase shows a goals summary and a recap textarea. Saving the recap sends a `PATCH` request to update the session record with the recap and `completedAt` timestamp.
+
+**AI tutor:** I implemented a conversational AI tutor (`TutorChat.tsx`) that uses Claude with context from the study pack's source document and topics. The `POST /api/tutor/chat` endpoint builds a system prompt that includes the study pack title, a 50,000-character excerpt of the source material, and topic names. It supports multi-turn conversation by sending the full message history to Claude. The chat UI shows suggested starter questions, role-styled message bubbles (blue for user, gray for assistant), an animated loading indicator, and auto-scroll.
+
+**Dashboard updates:** I expanded the dashboard to show 4 stat cards (Documents, Study Packs, Quizzes Taken, Focus Sessions) and added the WeakAreasList component. The sidebar now includes Focus Mode navigation, and the auth config was updated to protect the `/focus` route.
 
 ---
 
@@ -35,49 +63,40 @@ I completed the full foundation of the StudySphere application covering authenti
 
 **shadcn/ui component selection:** The shadcn/ui `toast` component was deprecated in favor of `sonner`. I switched to using the Sonner library directly with `toast.success()` and `toast.error()` calls, and added the `<Toaster>` component to the root layout for app-wide notifications.
 
+**Claude API model availability:** The initial model ID used for the Claude API (`claude-sonnet-4-5-20250929`) was invalid and returned 404 errors from the Anthropic API. After testing multiple model IDs, I identified that `claude-sonnet-4-20250514` was available on the API key and updated both the study pack generator and the tutor chat endpoint accordingly. I also added an early validation check for the API key to provide clear error messages instead of cryptic API failures.
+
+**AI response parsing reliability:** Claude's responses sometimes include markdown code fences around the JSON output (e.g., ` ```json...``` `). I added regex-based stripping of these fences before JSON parsing. I also added structural validation of the parsed response to catch cases where the AI produces valid JSON but missing required fields, and wrapped the `JSON.parse` call in a try-catch with a descriptive error message.
+
 ---
 
 ## 3. Blockers
 
-None. All Week 5 deliverables are fully implemented and the application is functional. The Anthropic Claude API SDK (`@anthropic-ai/sdk` v0.74.0) is already installed as a dependency and ready for integration in Week 6.
+None. All Week 5-8 deliverables are fully implemented and tested. The application is functional end-to-end: users can register, upload documents, generate AI study packs, take quizzes with scoring and weak area analysis, use focus mode with timers and goals, and chat with the AI tutor.
 
 ---
 
 ## 4. TODO
 
-**Week 6 — AI Study Pack Generation (target: Feb. 16, 2026)**
-- Implement the `/api/study-packs/generate` endpoint (currently a 501 stub) to send document text to the Anthropic Claude API and generate structured study content
-- AI should produce: short summary, detailed summary, topic breakdown with hierarchy, flashcards with difficulty ratings, and multiple-choice quiz questions with explanations
-- Store generated content across the StudyPack, Topic, Flashcard, and QuizQuestion models
-- Build the study pack viewer page (`/study-packs/[id]`) to display all generated content in an organized tabbed or sectioned layout
-- **Evaluation:** A user can upload a document, click "Generate Study Pack," and view the resulting summaries, topics, flashcards, and quiz questions. The generated content should be accurate and relevant to the source material. All data should persist in MongoDB.
-- **Deliverables:** Working generate endpoint, study pack viewer page, code pushed to GitHub
-
-**Weeks 7-8 — Quizzes, Weak Areas, Focus Mode & AI Tutor (target: Mar. 2, 2026)**
-- Build an interactive quiz-taking interface with score calculation and response tracking using the QuizAttempt model
-- Implement weak area detection by analyzing quiz performance to identify topics where the user scores poorly, stored in the WeakArea model with severity levels
-- Build a focus mode for timed study sessions with goals and session recaps using the FocusSession model
-- Implement a conversational AI tutor chat interface using the Claude API for context-aware Q&A about uploaded documents
-- **Evaluation:** A user can take a quiz, see their score, review incorrect answers with explanations, view identified weak areas, start a timed focus session on a weak topic, and ask the AI tutor questions about their material.
-- **Deliverables:** Quiz interface, weak area dashboard, focus mode timer, AI tutor chat, code pushed to GitHub
-
 **Weeks 9-10 — Testing & Refinement (target: Mar. 16, 2026)**
-- Write unit and integration tests for all API routes
-- End-to-end testing for critical user flows (register -> upload -> generate -> quiz -> review)
-- Performance optimization (database indexing, query efficiency)
-- UI/UX refinements based on testing feedback
+- Unit and integration testing for all API routes (registration, login, document CRUD, study pack generation, quiz submission, weak area analysis, focus sessions, tutor chat)
+- End-to-end testing for critical user flows (register -> upload -> generate -> quiz -> review weak areas -> focus session -> tutor chat)
+- Performance optimization (database query indexing, response payload optimization)
+- UI/UX refinements based on testing feedback and usability review
 - **Evaluation:** All tests pass, no critical bugs, response times are acceptable under normal load.
 - **Deliverables:** Test suite, performance benchmarks, bug fixes, code pushed to GitHub
 
 **Weeks 11-12 — Deployment & Documentation (target: Mar. 30, 2026)**
-- Deploy to Vercel with production MongoDB Atlas cluster
-- Configure environment variables and access controls
-- Write user documentation and project setup guide
+- Deploy to Vercel with production environment configuration
+- Configure production MongoDB Atlas cluster with proper access controls
+- Set up environment variables (MONGODB_URI, NEXTAUTH_SECRET, ANTHROPIC_API_KEY)
+- Write user documentation, API documentation, and project setup guide
 - **Evaluation:** Application is accessible via a public URL, all features work in the production environment, documentation is clear and complete.
 - **Deliverables:** Live deployment URL, documentation, code pushed to GitHub
 
 **Week 13 — Final Submission (target: Apr. 6, 2026)**
-- Final production testing, presentation preparation, and submission of all deliverables
+- Final testing in production environment
+- Project presentation preparation
+- Submit final deliverables and documentation
 - **Evaluation:** Presentation is complete, all deliverables are submitted on time.
 - **Deliverables:** Final presentation, project report, source code, live deployment
 

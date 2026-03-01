@@ -9,6 +9,7 @@ const StudyPackSchema = new Schema(
       short: { type: String, default: "" },
       detailed: { type: String, default: "" },
     },
+    mindMap: { type: Schema.Types.Mixed, default: null }, // JSON mind map structure
     status: { type: String, enum: ["generating", "ready", "error"], default: "generating" },
   },
   { timestamps: true }

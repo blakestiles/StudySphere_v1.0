@@ -7,11 +7,12 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
-      const isOnUpload = nextUrl.pathname.startsWith("/upload");
-      const isOnProfile = nextUrl.pathname.startsWith("/profile");
-      const isOnStudyPacks = nextUrl.pathname.startsWith("/study-packs");
-      const isProtected = isOnDashboard || isOnUpload || isOnProfile || isOnStudyPacks;
+      const protectedPrefixes = [
+        "/dashboard", "/upload", "/profile", "/study-packs", "/focus",
+        "/calendar", "/analytics", "/practice-essay", "/documents",
+        "/knowledge-graph", "/history", "/chat", "/study-plan",
+      ];
+      const isProtected = protectedPrefixes.some((p) => nextUrl.pathname.startsWith(p));
 
       if (isProtected) {
         if (isLoggedIn) return true;

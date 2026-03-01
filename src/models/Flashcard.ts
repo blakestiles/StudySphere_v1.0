@@ -6,6 +6,12 @@ const FlashcardSchema = new Schema({
   question: { type: String, required: true },
   answer: { type: String, required: true },
   difficulty: { type: String, enum: ["easy", "medium", "hard"], default: "medium" },
+  // SM-2 Spaced Repetition fields
+  easeFactor: { type: Number, default: 2.5 },
+  intervalDays: { type: Number, default: 0 },
+  repetitions: { type: Number, default: 0 },
+  nextReviewAt: { type: Date, default: Date.now },
+  lastSeenAt: { type: Date },
 });
 
 const Flashcard = models.Flashcard || mongoose.model("Flashcard", FlashcardSchema);
