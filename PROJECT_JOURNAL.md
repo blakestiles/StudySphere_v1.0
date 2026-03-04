@@ -3,7 +3,7 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** February 17, 2026
+**Date:** March 1, 2026
 
 ---
 
@@ -51,6 +51,32 @@ I implemented the remaining interactive study features to complete the core appl
 
 **Dashboard updates:** I expanded the dashboard to show 4 stat cards (Documents, Study Packs, Quizzes Taken, Focus Sessions) and added the WeakAreasList component. The sidebar now includes Focus Mode navigation, and the auth config was updated to protect the `/focus` route.
 
+### Weeks 9-10 (Partial): UI Redesign & Full Feature Parity (Completed Mar. 1, 2026)
+
+After completing the core study workflow, I undertook a major expansion to bring the application to full feature parity with a professional study companion platform. This was the largest development phase, adding 5 new database models (15 total), 9 new pages (17 total), 12 new API routes (29 total), and significant UI/UX improvements.
+
+**Dark/light theme and UI overhaul:** I integrated `next-themes` with a `ThemeProvider` and added a toggle button to the Navbar. All components respect the active theme via Tailwind CSS dark mode classes. I also implemented a global command palette using the `cmdk` library (activated via Cmd+K / Ctrl+K) that provides fuzzy search navigation to all 17 pages. The sidebar was completely rebuilt — it's now collapsible on desktop and slides in as an overlay on mobile, with navigation expanded from 5 items to 13 covering every page in the application.
+
+**SM-2 spaced repetition for flashcards:** I extended the Flashcard model with SM-2 parameters (easeFactor, interval, repetitions, nextReview) and built a review API endpoint (`PATCH /api/flashcards/[id]/review`). Users rate each card as Again/Hard/Good/Easy, which maps to SM-2 quality scores. The algorithm adjusts the ease factor and interval accordingly — "Again" resets the card to the initial learning stage, while successful recalls produce exponentially increasing review intervals. I also added browser-native text-to-speech (SpeechSynthesis) so users can listen to flashcard content.
+
+**Pomodoro focus mode:** I replaced the simple countdown timer from Week 8 with a full Pomodoro implementation. The timer now cycles through work phases (25 min default), short breaks (5 min), and long breaks (15 min after every 4 work sessions) with auto-transitions between phases. An SVG arc animation provides visual feedback of remaining time.
+
+**Practice essays with AI grading:** I built a new `/practice-essay` page where users select a study pack and write essays on topics from their materials. Submitted essays are sent to Claude with a structured rubric that evaluates four criteria on a 1-10 scale: accuracy, depth, clarity, and critical thinking. The AI returns per-criterion scores plus detailed written feedback. Results are stored in a new `EssayAttempt` model. The API has two routes: `POST /api/essays/submit` for grading and `GET /api/essays` for history.
+
+**Calendar and study events:** I created a monthly calendar view (`/calendar`) with previous/next month navigation and color-coded event indicators. Users can create, edit, and delete study events on any day, and mark events as complete. The `StudyEvent` model stores userId, title, date, color, completed status, and notes. Two API routes handle CRUD operations.
+
+**AI study plan generator:** The `/study-plan` page lets users select study packs, choose an intensity level (light/moderate/intensive), and set a target deadline. These inputs are sent to Claude, which generates a structured study schedule distributing sessions across available days with interleaved topics. The generated plan is automatically created as `StudyEvent` entries, appearing immediately on the calendar.
+
+**Analytics dashboard:** I built a comprehensive `/analytics` page using the Recharts library. It displays three charts — study minutes over time (line chart from FocusSession data), cards reviewed (bar chart from ReviewStats data), and quiz score trends (line chart from QuizAttempt data). The page also shows a study streak counter (consecutive days with activity) and milestone progress bars tracking achievements like "Review 100 cards" and "Complete 10 quizzes." Two API routes (`/api/analytics/summary` and `/api/analytics/charts`) aggregate data from multiple models.
+
+**Document viewer with annotations:** I created a full document viewer (`/documents/[id]`) that renders the complete extracted text with line numbers. Users can select text and add three types of annotations: highlight (yellow), underline (blue), or note (with comment text). Annotations are persisted to a new `Annotation` model and loaded when the document is opened. A documents list page (`/documents`) provides an overview of all uploaded documents.
+
+**Enhanced AI tutor:** The AI tutor was significantly expanded from the Week 8 version. Conversations are now stored in persistent `ChatThread` and `ChatMessage` models, allowing users to create, switch between, and continue previous conversations. I added an ELI5 mode toggle that modifies the system prompt to use child-friendly explanations, voice input via the SpeechRecognition API, voice output via SpeechSynthesis, and proper markdown rendering of AI responses using `react-markdown` with `remark-gfm`. The standalone `/chat` page has four API routes for thread and message CRUD.
+
+**Mind maps and knowledge graph:** Study pack generation now includes mind map JSON in the Claude prompt. Each study pack's detail page has a new "Mind Map" tab (6 tabs total) with two SVG visualization modes: tree view (hierarchical) and flowchart view (horizontal). I also built a cross-pack knowledge graph page (`/knowledge-graph`) that renders an SVG node-link diagram showing topic relationships across all study packs.
+
+**History page:** I created a `/history` page that shows a chronological log of all user activities — quiz attempts, essay submissions, and focus sessions. Each entry displays a type icon, title, date, and score/duration, with expandable details revealing full results. The `GET /api/history` endpoint aggregates data from QuizAttempt, EssayAttempt, and FocusSession models.
+
 ---
 
 ## 2. Challenges
@@ -67,19 +93,27 @@ I implemented the remaining interactive study features to complete the core appl
 
 **AI response parsing reliability:** Claude's responses sometimes include markdown code fences around the JSON output (e.g., ` ```json...``` `). I added regex-based stripping of these fences before JSON parsing. I also added structural validation of the parsed response to catch cases where the AI produces valid JSON but missing required fields, and wrapped the `JSON.parse` call in a try-catch with a descriptive error message.
 
+**Responsive sidebar behavior:** Building a sidebar that works well on both desktop and mobile required careful state management. The desktop version needed to be collapsible (toggle between full width and icon-only) while the mobile version needed to slide in from the left with a backdrop overlay that closes on tap. I handled this with separate rendering paths and a resize listener to switch between modes.
+
+**SM-2 algorithm edge cases:** Implementing SM-2 required careful handling of the "Again" rating, which resets repetitions to 0 and interval to 1 day while preserving the adjusted ease factor. I also had to ensure the minimum ease factor floor of 1.3 was enforced to prevent cards from becoming unreviewable due to extremely low ease values.
+
+**Recharts and server components:** Recharts components use browser APIs and cannot render in Next.js server components. I had to ensure all chart containers were marked as client components with `"use client"` and that data fetching happened server-side before being passed as props, or via client-side `fetch` calls to the analytics API.
+
+**Mind map and knowledge graph layout:** Positioning nodes in SVG without a physics engine required manual layout algorithms. For mind maps, I used a recursive tree layout that calculates node positions based on depth and sibling count. For the knowledge graph, I implemented a simplified force-directed-style placement algorithm. Both handle variable node counts and text lengths.
+
 ---
 
 ## 3. Blockers
 
-None. All Week 5-8 deliverables are fully implemented and tested. The application is functional end-to-end: users can register, upload documents, generate AI study packs, take quizzes with scoring and weak area analysis, use focus mode with timers and goals, and chat with the AI tutor.
+None. All Week 5-10 deliverables are fully implemented and functional. The application is feature-complete with 15 models, 17 pages, and 29 API routes. Users can register, upload documents, generate AI study packs (with summaries, topics, flashcards, quizzes, and mind maps), review flashcards with spaced repetition, take quizzes with weak area analysis, use Pomodoro focus mode, chat with the AI tutor (with voice and ELI5 mode), write practice essays with AI grading, manage study events on a calendar, generate AI study plans, track analytics and streaks, annotate documents, and explore topic relationships via the knowledge graph.
 
 ---
 
 ## 4. TODO
 
-**Weeks 9-10 — Testing & Refinement (target: Mar. 16, 2026)**
-- Unit and integration testing for all API routes (registration, login, document CRUD, study pack generation, quiz submission, weak area analysis, focus sessions, tutor chat)
-- End-to-end testing for critical user flows (register -> upload -> generate -> quiz -> review weak areas -> focus session -> tutor chat)
+**Weeks 10-11 — Testing & Refinement (target: Mar. 16, 2026)**
+- Unit and integration testing for all 29 API routes
+- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → analytics)
 - Performance optimization (database query indexing, response payload optimization)
 - UI/UX refinements based on testing feedback and usability review
 - **Evaluation:** All tests pass, no critical bugs, response times are acceptable under normal load.

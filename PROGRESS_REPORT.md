@@ -3,7 +3,7 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** February 17, 2026
+**Date:** March 1, 2026
 
 ---
 
@@ -22,6 +22,10 @@
 | Notifications | Sonner (toast library) | 2.0.7 |
 | Icons | Lucide React | 0.563.0 |
 | Validation | Zod | 4.3.6 |
+| Charts | Recharts | latest |
+| Command Palette | cmdk | latest |
+| Markdown Rendering | react-markdown + remark-gfm | latest |
+| Date Utilities | date-fns | latest |
 
 ---
 
@@ -467,11 +471,271 @@ All 10 models are defined in `src/models/` with Mongoose schemas:
 
 ---
 
-## Remaining Work (Weeks 9-13)
+## Weeks 9-10 (Partial): UI Redesign, New Features & Full Feature Parity
 
-### Weeks 9-10: Testing & Refinement
-- Unit and integration testing for all API routes (registration, login, document CRUD, study pack generation)
-- End-to-end testing for critical user flows (register -> upload -> generate -> quiz -> review)
+Following the completion of the core study workflow (Weeks 5-8), I undertook a major expansion of the application to bring it to full feature parity with a professional study companion platform. This phase added 5 new Mongoose models (15 total), 9 new pages (17 total), 12 new API routes (29 total), and numerous UI/UX improvements.
+
+### 1. Theme System & UI Overhaul
+
+#### 1.1 Dark/Light Theme Toggle
+- Integrated `next-themes` with a `ThemeProvider` wrapping the entire application
+- Added a theme toggle button to the Navbar that switches between dark and light modes
+- All components and pages respect the active theme via Tailwind CSS dark mode classes
+
+#### 1.2 Command Palette (Cmd+K)
+- Implemented a global command palette using the `cmdk` library
+- Activated via `Cmd+K` (Mac) or `Ctrl+K` (Windows) keyboard shortcut
+- Provides quick navigation to all 17 pages in the application with fuzzy search
+
+#### 1.3 Responsive Sidebar Redesign
+- Rebuilt the sidebar to be collapsible on desktop and a slide-in overlay on mobile
+- Expanded navigation from 5 items to 13 items covering all application pages:
+  Dashboard, Upload, Study Packs, Documents, Focus Mode, Practice Essay, Calendar, Study Plan, Analytics, AI Tutor, Knowledge Graph, History, Profile
+
+### 2. SM-2 Spaced Repetition System
+
+#### 2.1 Flashcard Review Tracking
+- Extended the Flashcard model with SM-2 parameters: `easeFactor` (default 2.5), `interval` (days), `repetitions` (count), and `nextReview` (date)
+- Created a `PATCH /api/flashcards/[id]/review` endpoint that accepts a quality rating and recalculates SM-2 parameters
+- The SM-2 algorithm adjusts the ease factor and interval based on the user's self-assessed recall quality
+
+#### 2.2 Four-Rating Review System
+- Users rate each flashcard with one of four options: Again (reset), Hard (shorter interval), Good (standard interval), Easy (longer interval)
+- Ratings map to SM-2 quality scores (1, 3, 4, 5 respectively)
+- Cards rated "Again" are reset to the initial learning stage; all others advance with adjusted intervals
+
+#### 2.3 Text-to-Speech on Flashcards
+- Added browser-native `SpeechSynthesis` to read flashcard content aloud
+- Available on both the question and answer sides of each flashcard
+
+### 3. Pomodoro Focus Mode
+
+#### 3.1 Enhanced Timer System
+- Replaced the simple countdown timer with a full Pomodoro implementation featuring three phases: work (25 min default), short break (5 min), and long break (15 min after every 4 work sessions)
+- SVG arc animation provides visual feedback of remaining time
+- Auto-transitions between phases with audio/visual notifications
+
+### 4. Practice Essays with AI Grading
+
+#### 4.1 Essay Writing Interface (`/practice-essay`)
+- Users select a study pack and write essays on topics from their study materials
+- Full-page textarea with word count tracking
+
+#### 4.2 AI Grading System
+- Submitted essays are sent to the Claude API with a structured grading rubric
+- Claude evaluates on 4 criteria (1-10 scale each): Accuracy, Depth, Clarity, and Critical Thinking
+- Returns per-criterion scores plus detailed written feedback
+- Results stored in the `EssayAttempt` model for historical tracking
+
+#### 4.3 Essay API Routes
+- `POST /api/essays/submit` — submits essay for AI grading
+- `GET /api/essays` — retrieves user's essay history
+
+### 5. Calendar & Study Events
+
+#### 5.1 Monthly Calendar View (`/calendar`)
+- Interactive monthly calendar with navigation (previous/next month)
+- Color-coded event indicators on each day
+- Click any day to view, create, edit, or delete study events
+
+#### 5.2 Study Event CRUD
+- `POST /api/study-events` — create a new study event with title, date, color, and optional notes
+- `GET /api/study-events` — retrieve events for a date range
+- Events can be marked as complete with a toggle
+
+#### 5.3 StudyEvent Model
+- Fields: userId, title, date, color, completed, notes
+- Linked to the user for personalized calendar views
+
+### 6. AI Study Plan Generator
+
+#### 6.1 Study Plan Page (`/study-plan`)
+- Users select study packs to include, choose an intensity level (light/moderate/intensive), and set a target deadline
+- The system sends these parameters to the Claude API, which generates a structured study schedule
+
+#### 6.2 Auto-Population
+- Generated study plan sessions are automatically created as `StudyEvent` entries
+- Events appear immediately on the calendar after generation
+- `POST /api/study-plan/generate` — handles plan generation and event creation
+
+### 7. Analytics Dashboard (`/analytics`)
+
+#### 7.1 Charts and Metrics
+- **Study Minutes Over Time:** Line chart built with Recharts showing daily focus session minutes
+- **Cards Reviewed:** Bar chart tracking flashcard review activity
+- **Quiz Score Trends:** Line chart plotting quiz attempt scores over time
+- All charts use data aggregated from FocusSession, ReviewStats, and QuizAttempt models
+
+#### 7.2 Streak Tracking
+- Calculates consecutive days with logged study activity (focus sessions, quiz attempts, or card reviews)
+- Displays current streak prominently on the analytics page
+
+#### 7.3 Milestone Progress
+- Tracks achievements like "Review 100 cards," "Complete 10 quizzes," "Study for 10 hours"
+- Progress bars show completion percentage toward each milestone
+
+#### 7.4 Analytics API Routes
+- `GET /api/analytics/summary` — aggregated stats (total study time, cards reviewed, quizzes taken, streak)
+- `GET /api/analytics/charts` — time-series data for chart rendering
+
+### 8. Document Viewer with Annotations (`/documents/[id]`)
+
+#### 8.1 Full Document Viewer
+- Renders the complete extracted text of uploaded documents in a readable format
+- Scrollable view with line numbers for reference
+
+#### 8.2 Annotation System
+- Users can highlight, underline, or add notes to specific text selections
+- Three annotation types: highlight (yellow), underline (blue), and note (with comment text)
+- Annotations are persisted to the database via the `Annotation` model
+
+#### 8.3 Annotation API Routes
+- `POST /api/annotations` — create a new annotation with type, text, position, and optional comment
+- `GET /api/annotations?documentId=X` — retrieve all annotations for a document
+
+### 9. Enhanced AI Tutor (`/chat`)
+
+#### 9.1 Persistent Chat Threads
+- Conversations are stored in `ChatThread` and `ChatMessage` models
+- Users can create new threads, switch between existing threads, and continue previous conversations
+- Thread list shows titles and last message timestamps
+
+#### 9.2 Multimodal Interaction
+- **ELI5 Mode:** Toggle that modifies the system prompt to instruct Claude to explain concepts as if to a five-year-old
+- **Voice Input:** Browser `SpeechRecognition` API for hands-free question asking
+- **Voice Output:** `SpeechSynthesis` API reads AI responses aloud
+- **Markdown Rendering:** AI responses rendered with `react-markdown` and `remark-gfm` for proper formatting of code blocks, lists, tables, etc.
+
+#### 9.3 Chat API Routes
+- `POST /api/chat/threads` — create a new chat thread
+- `GET /api/chat/threads` — list user's chat threads
+- `POST /api/chat/threads/[id]/messages` — send a message and get AI response
+- `GET /api/chat/threads/[id]/messages` — retrieve message history for a thread
+
+### 10. Mind Maps & Knowledge Graph
+
+#### 10.1 Mind Maps (per Study Pack)
+- Study pack generation now includes a mind map JSON structure in the Claude API prompt
+- Two visualization modes: tree view (hierarchical) and flowchart view (horizontal)
+- Rendered as interactive SVG with node positioning and connecting lines
+- Accessible via the "Mind Map" tab on the study pack detail page (now 6 tabs total)
+
+#### 10.2 Knowledge Graph (`/knowledge-graph`)
+- Cross-pack topic visualization showing relationships between topics across all study packs
+- SVG-based node-link diagram with force-directed-style layout
+- Nodes represent topics, edges represent shared concepts or co-occurrence within documents
+
+### 11. History Page (`/history`)
+
+#### 11.1 Activity Log
+- Chronological log of all user activities: quiz attempts, essay submissions, and focus sessions
+- Each entry shows type icon, title, date, and score/duration
+- Expandable details reveal full results (quiz answers, essay feedback, session recaps)
+
+#### 11.2 History API
+- `GET /api/history` — aggregates and returns activity data from QuizAttempt, EssayAttempt, and FocusSession models, sorted by date
+
+### 12. New Database Models
+
+Five new Mongoose models were added to support the expanded features:
+
+| Model | Fields | Purpose |
+|-------|--------|---------|
+| **EssayAttempt** | userId, studyPackId, topic, essay, scores (accuracy/depth/clarity/criticalThinking), feedback, completedAt | Practice essay submissions and AI grades |
+| **StudyEvent** | userId, title, date, color, completed, notes | Calendar study events |
+| **ChatThread** | userId, studyPackId, title, createdAt | Persistent AI tutor conversation threads |
+| **ChatMessage** | threadId, role (user/assistant), content, createdAt | Individual messages within chat threads |
+| **Annotation** | userId, documentId, type (highlight/underline/note), text, position, comment | Document viewer annotations |
+| **ReviewStats** | userId, date, cardsReviewed, minutesStudied | Daily review activity tracking for analytics |
+
+### 13. Updated Project File Structure
+
+```
+StudySphere/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   │   ├── login/page.tsx
+│   │   │   └── register/page.tsx
+│   │   ├── (main)/
+│   │   │   ├── layout.tsx
+│   │   │   ├── dashboard/page.tsx
+│   │   │   ├── upload/page.tsx
+│   │   │   ├── profile/page.tsx
+│   │   │   ├── study-packs/page.tsx
+│   │   │   ├── study-packs/[id]/page.tsx
+│   │   │   ├── focus/page.tsx
+│   │   │   ├── documents/page.tsx               # NEW: Document list
+│   │   │   ├── documents/[id]/page.tsx          # NEW: Document viewer + annotations
+│   │   │   ├── calendar/page.tsx                # NEW: Monthly calendar
+│   │   │   ├── analytics/page.tsx               # NEW: Analytics dashboard
+│   │   │   ├── practice-essay/page.tsx          # NEW: Essay writing + AI grading
+│   │   │   ├── chat/page.tsx                    # NEW: Enhanced AI tutor
+│   │   │   ├── study-plan/page.tsx              # NEW: AI study plan generator
+│   │   │   ├── knowledge-graph/page.tsx         # NEW: Cross-pack topic visualization
+│   │   │   └── history/page.tsx                 # NEW: Activity history log
+│   │   ├── api/
+│   │   │   ├── auth/ (3 routes)
+│   │   │   ├── documents/ (3 routes)
+│   │   │   ├── study-packs/ (4 routes)
+│   │   │   ├── focus-sessions/ (2 routes)
+│   │   │   ├── weak-areas/ (2 routes)
+│   │   │   ├── tutor/ (1 route)
+│   │   │   ├── flashcards/ (1 route)            # NEW: SM-2 review
+│   │   │   ├── essays/ (2 routes)               # NEW: Essay submit + history
+│   │   │   ├── study-events/ (2 routes)         # NEW: Calendar CRUD
+│   │   │   ├── study-plan/ (1 route)            # NEW: Plan generation
+│   │   │   ├── chat/ (4 routes)                 # NEW: Chat threads + messages
+│   │   │   ├── annotations/ (2 routes)          # NEW: Document annotations
+│   │   │   ├── analytics/ (2 routes)            # NEW: Summary + charts
+│   │   │   └── history/ (1 route)               # NEW: Activity log
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   └── page.tsx
+│   ├── components/
+│   │   ├── features/ (expanded with new feature components)
+│   │   ├── layout/
+│   │   │   ├── Navbar.tsx                       # Updated: theme toggle added
+│   │   │   ├── Sidebar.tsx                      # Updated: 13 nav items, responsive
+│   │   │   └── CommandPalette.tsx               # NEW: Cmd+K navigation
+│   │   ├── providers/
+│   │   │   ├── SessionProvider.tsx
+│   │   │   └── ThemeProvider.tsx                # NEW: next-themes provider
+│   │   └── ui/ (shadcn/ui components)
+│   ├── lib/
+│   │   ├── claude.ts
+│   │   ├── db.ts
+│   │   ├── pdf.ts
+│   │   ├── study-pack-generator.ts
+│   │   ├── utils.ts
+│   │   └── validations/
+│   ├── models/ (15 models total)
+│   │   ├── User.ts, Document.ts, StudyPack.ts, Topic.ts
+│   │   ├── Flashcard.ts, QuizQuestion.ts, QuizAttempt.ts
+│   │   ├── FocusSession.ts, WeakArea.ts
+│   │   ├── EssayAttempt.ts                     # NEW
+│   │   ├── StudyEvent.ts                       # NEW
+│   │   ├── ChatThread.ts                       # NEW
+│   │   ├── ChatMessage.ts                      # NEW
+│   │   ├── Annotation.ts                       # NEW
+│   │   └── ReviewStats.ts                      # NEW
+│   ├── auth.ts
+│   ├── auth.config.ts
+│   └── middleware.ts
+├── next.config.ts
+├── components.json
+├── package.json
+├── tsconfig.json
+└── tailwind.config.ts
+```
+
+---
+
+## Remaining Work (Weeks 10-13)
+
+### Weeks 10-11: Testing & Refinement
+- Unit and integration testing for all 29 API routes
+- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → analytics)
 - Performance optimization (database query indexing, response payload optimization)
 - UI/UX refinements based on testing feedback and usability review
 
@@ -611,14 +875,22 @@ StudySphere/
 
 ## Summary
 
-All Week 1-8 deliverables are **fully implemented, tested, and functional**. The application has:
+All Week 1-10 deliverables are **fully implemented and functional**. The application has:
 
-- **Complete authentication system** (Weeks 1-5) with registration, login, JWT sessions, profile management, and route protection for all authenticated pages including `/focus`.
-- **Document management** (Week 5) with PDF upload (drag-drop, text extraction), text paste, listing, and cascade deletion.
-- **AI-powered study pack generation** (Week 6) using the Anthropic Claude API (`claude-sonnet-4-20250514`) to produce structured summaries, topics, flashcards, and quiz questions from uploaded documents. Includes a study packs listing page and a 5-tab detail viewer.
+- **Complete authentication system** (Weeks 1-5) with registration, login, JWT sessions, profile management, and route protection for all 17 authenticated pages.
+- **Document management** (Week 5) with PDF upload (drag-drop, text extraction), text paste, listing, cascade deletion, and a full document viewer with annotations.
+- **AI-powered study pack generation** (Week 6) using the Anthropic Claude API (`claude-sonnet-4-20250514`) to produce structured summaries, topics, flashcards, quiz questions, and mind maps from uploaded documents. Includes a study packs listing page and a 6-tab detail viewer (Summary, Mind Map, Topics, Flashcards, Quiz, AI Tutor).
 - **Interactive quiz system** (Week 7) with multiple-choice questions, score tracking, detailed answer review with explanations, and automatic weak area analysis after each attempt.
 - **Weak area detection** (Week 7) that analyzes quiz performance per topic, classifies severity (high/medium/low), and displays results on the dashboard with links to relevant study packs.
-- **Focus mode** (Week 8) with a 3-phase workflow (setup with study pack selection, goals, and duration presets → active countdown timer with goal checklist → completion with recap) persisted via focus session records.
-- **AI tutor** (Week 8) providing multi-turn conversational support using Claude with full context from the study pack's source material and topics.
+- **Pomodoro focus mode** (Weeks 8-9) with work/short break/long break phases, SVG arc timer, auto-transitions, goal tracking, and session recaps.
+- **Enhanced AI tutor** (Weeks 8-9) with persistent chat threads, ELI5 mode, voice input (SpeechRecognition), voice output (SpeechSynthesis), and markdown rendering.
+- **SM-2 spaced repetition** (Week 9) for flashcards with ease factor, interval, repetition tracking, and a 4-rating review system (Again/Hard/Good/Easy).
+- **Practice essays with AI grading** (Week 9) evaluating accuracy, depth, clarity, and critical thinking on a 1-10 scale with detailed feedback.
+- **Calendar with study events** (Week 9) featuring monthly view, CRUD operations, color-coded events, and completion tracking.
+- **AI study plan generator** (Week 9) that creates personalized study schedules from selected packs, intensity, and deadline, auto-populating the calendar.
+- **Analytics dashboard** (Week 9) with Recharts charts (study minutes, cards reviewed, quiz scores), streak tracking, and milestone progress.
+- **Mind maps and knowledge graph** (Week 9) with tree/flowchart SVG views per study pack and cross-pack topic visualization.
+- **Dark/light theme, command palette (Cmd+K), and responsive sidebar** (Week 9) for a polished, professional UI.
+- **History page** (Week 9) with chronological activity log and expandable details for quizzes, essays, and focus sessions.
 
-All 17 API routes return correct HTTP status codes. All 8 pages render successfully. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout.
+The application comprises **15 Mongoose models**, **17 pages**, and **29 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout.

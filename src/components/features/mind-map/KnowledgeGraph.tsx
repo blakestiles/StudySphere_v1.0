@@ -177,8 +177,8 @@ export default function KnowledgeGraph() {
               content: t.content || "",
               flashcardCount: packFlashcards.filter((f: any) => String(f.topicId) === topicId).length,
               quizCount: packQuizQuestions.filter((q: any) => String(q.topicId) === topicId).length,
-              x: 200 + Math.random() * 600,
-              y: 100 + Math.random() * 450,
+              x: 100 + Math.random() * 800,
+              y: 50 + Math.random() * 550,
               vx: 0,
               vy: 0,
               radius: 8 + Math.min(packTopics.length, 8) * 1.5,
@@ -405,17 +405,18 @@ export default function KnowledgeGraph() {
       const hidden = hiddenPacksRef.current;
       const { w: W, h: H } = sizeRef.current;
       const CX = W / 2, CY = H / 2;
-      const alpha = Math.max(0.01, 0.4 * Math.pow(0.995, tickCount.current));
+      // Alpha never fully decays — keeps a gentle minimum so nodes stay alive
+      const alpha = Math.max(0.08, 0.5 * Math.pow(0.997, tickCount.current));
       tickCount.current++;
 
-      // Center gravity
+      // Center gravity (gentle pull so graph doesn't fly off)
       for (const n of ns) {
         if (dragNode.current === n || hidden.has(n.packId)) continue;
-        n.vx += (CX - n.x) * 0.0004;
-        n.vy += (CY - n.y) * 0.0004;
+        n.vx += (CX - n.x) * 0.0003;
+        n.vy += (CY - n.y) * 0.0003;
       }
 
-      // Repulsion
+      // Repulsion — much stronger so nodes spread out
       for (let i = 0; i < ns.length; i++) {
         if (hidden.has(ns[i].packId)) continue;
         for (let j = i + 1; j < ns.length; j++) {
@@ -423,7 +424,9 @@ export default function KnowledgeGraph() {
           const dx = ns[j].x - ns[i].x;
           const dy = ns[j].y - ns[i].y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const repulse = 3000 / (dist * dist);
+          const minDist = 120; // enforce minimum distance
+          const effectiveDist = Math.max(dist, minDist * 0.5);
+          const repulse = 12000 / (effectiveDist * effectiveDist);
           const rx = (dx / dist) * repulse * alpha;
           const ry = (dy / dist) * repulse * alpha;
           if (dragNode.current !== ns[i]) { ns[i].vx -= rx; ns[i].vy -= ry; }
@@ -433,7 +436,7 @@ export default function KnowledgeGraph() {
 
       const nodeMap = new Map(ns.map(n => [n.id, n]));
 
-      // Attraction along edges
+      // Attraction along edges — larger target distances
       for (const e of es) {
         const src = nodeMap.get(e.source);
         const tgt = nodeMap.get(e.target);
@@ -442,8 +445,8 @@ export default function KnowledgeGraph() {
         const dx = tgt.x - src.x;
         const dy = tgt.y - src.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const target = e.type === "same-pack" ? 110 : 200;
-        const str = e.type === "same-pack" ? 0.008 : 0.002 * e.strength;
+        const target = e.type === "same-pack" ? 180 : 300;
+        const str = e.type === "same-pack" ? 0.006 : 0.0015 * e.strength;
         const force = (dist - target) * str * alpha;
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -451,16 +454,19 @@ export default function KnowledgeGraph() {
         if (dragNode.current !== tgt) { tgt.vx -= fx; tgt.vy -= fy; }
       }
 
-      // Apply velocity
+      // Apply velocity with gentle random jitter to keep things alive
       for (const n of ns) {
         if (hidden.has(n.packId)) continue;
         if (dragNode.current === n) { n.vx = 0; n.vy = 0; continue; }
-        n.vx *= 0.88;
-        n.vy *= 0.88;
+        // Subtle organic drift
+        n.vx += (Math.random() - 0.5) * 0.15;
+        n.vy += (Math.random() - 0.5) * 0.15;
+        n.vx *= 0.9;
+        n.vy *= 0.9;
         n.x += n.vx;
         n.y += n.vy;
-        n.x = Math.max(50, Math.min(W - 50, n.x));
-        n.y = Math.max(50, Math.min(H - 50, n.y));
+        n.x = Math.max(40, Math.min(W - 40, n.x));
+        n.y = Math.max(40, Math.min(H - 40, n.y));
       }
     }
 
@@ -536,7 +542,9 @@ export default function KnowledgeGraph() {
         }
       }
 
-      // Draw edges
+      const time = Date.now();
+
+      // Draw edges with animated energy flow
       for (const e of es) {
         const src = nodeMap.get(e.source);
         const tgt = nodeMap.get(e.target);
@@ -547,22 +555,40 @@ export default function KnowledgeGraph() {
         const isHighlighted = sel && (e.source === sel.id || e.target === sel.id);
         const isDimmed = sel && !isHighlighted;
 
+        // Base line
         ctx.beginPath();
         ctx.moveTo(src.x, src.y);
         ctx.lineTo(tgt.x, tgt.y);
 
         if (e.type === "cross-pack") {
           ctx.setLineDash([6, 4]);
-          const baseAlpha = 0.05 + e.strength * 0.2;
-          ctx.strokeStyle = isDimmed ? "rgba(251,146,60,0.03)" : isHighlighted ? "rgba(251,146,60,0.7)" : `rgba(251,146,60,${baseAlpha})`;
-          ctx.lineWidth = isHighlighted ? 1 + e.strength * 2 : 0.5 + e.strength * 1.5;
+          const baseAlpha = 0.06 + e.strength * 0.25;
+          ctx.strokeStyle = isDimmed ? "rgba(251,146,60,0.12)" : isHighlighted ? "rgba(251,191,36,0.8)" : `rgba(251,146,60,${baseAlpha})`;
+          ctx.lineWidth = isHighlighted ? 1.5 + e.strength * 2 : 0.6 + e.strength * 1.5;
         } else {
           ctx.setLineDash([]);
-          ctx.strokeStyle = isDimmed ? "rgba(71,85,105,0.03)" : isHighlighted ? "rgba(148,163,184,0.5)" : "rgba(71,85,105,0.2)";
+          ctx.strokeStyle = isDimmed ? "rgba(71,85,105,0.12)" : isHighlighted ? "rgba(148,163,184,0.55)" : "rgba(71,85,105,0.18)";
           ctx.lineWidth = isHighlighted ? 1.5 : 0.7;
         }
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // Animated energy dot flowing along highlighted edges
+        if (isHighlighted && !isDimmed) {
+          const dx = tgt.x - src.x;
+          const dy = tgt.y - src.y;
+          const progress = ((time / 1200) % 1);
+          const dotX = src.x + dx * progress;
+          const dotY = src.y + dy * progress;
+          const dotColor = e.type === "cross-pack" ? "rgba(251,191,36,0.9)" : "rgba(148,200,255,0.8)";
+          const dotGlow = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 5);
+          dotGlow.addColorStop(0, dotColor);
+          dotGlow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+          ctx.fillStyle = dotGlow;
+          ctx.fill();
+        }
       }
 
       // Draw particles
@@ -575,12 +601,12 @@ export default function KnowledgeGraph() {
       }
 
       // Draw nodes
-      const time = Date.now();
       for (const n of ns) {
         if (hidden.has(n.packId)) continue;
         if (focus && !focus.has(n.id)) continue;
 
         const color = colors[n.packId] || "#60a5fa";
+        const rgb = hexToRgb(color);
         const isSelected = sel?.id === n.id;
         const isConnected = connectedIds.has(n.id);
         const isDimmed = sel && !isSelected && !isConnected;
@@ -588,56 +614,132 @@ export default function KnowledgeGraph() {
         const isSearchMatch = hasSearch && searchMatches.has(n.id);
         const isSearchDimmed = hasSearch && !isSearchMatch;
 
-        const globalAlpha = isDimmed ? 0.15 : isSearchDimmed ? 0.2 : 1;
+        const globalAlpha = isDimmed ? 0.55 : isSearchDimmed ? 0.45 : 1;
         ctx.globalAlpha = globalAlpha;
 
-        // Search match pulsing ring
+        const sizeBonus = Math.min(4, (n.flashcardCount + n.quizCount) * 0.5);
+        const r = (isHovered ? n.radius + 3 : n.radius) + sizeBonus;
+
+        // Each node gets a unique phase offset based on its position in the array
+        const nodeIndex = ns.indexOf(n);
+        const phase = nodeIndex * 1.37;
+
+        // ── Layer 1: Outer breathing aura ──
+        const breathe = 0.5 + 0.5 * Math.sin(time / 1800 + phase);
+        const auraRadius = r + 20 + breathe * 8;
+        const aura = ctx.createRadialGradient(n.x, n.y, r * 0.6, n.x, n.y, auraRadius);
+        aura.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},${isSelected ? 0.25 : 0.08})`);
+        aura.addColorStop(0.6, `rgba(${rgb.r},${rgb.g},${rgb.b},${isSelected ? 0.08 : 0.03})`);
+        aura.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, auraRadius, 0, Math.PI * 2);
+        ctx.fillStyle = aura;
+        ctx.fill();
+
+        // ── Layer 2: Spinning orbital ring ──
+        const orbitRadius = r + 8 + (isSelected ? 4 : 0);
+        const orbitSpeed = time / (2200 + nodeIndex * 80);
+        ctx.save();
+        ctx.translate(n.x, n.y);
+        ctx.rotate(orbitSpeed);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, orbitRadius, orbitRadius * 0.35, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${isSelected ? 0.5 : 0.2})`;
+        ctx.lineWidth = isSelected ? 1.5 : 0.8;
+        ctx.stroke();
+        // Small orbiting dot
+        const dotAngle = orbitSpeed * 3;
+        const dotX = Math.cos(dotAngle) * orbitRadius;
+        const dotY = Math.sin(dotAngle) * orbitRadius * 0.35;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, isSelected ? 2.5 : 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${isSelected ? 0.9 : 0.5})`;
+        ctx.fill();
+        ctx.restore();
+
+        // ── Layer 3: Second orbital (perpendicular, selected/hovered only) ──
+        if (isSelected || isHovered) {
+          ctx.save();
+          ctx.translate(n.x, n.y);
+          ctx.rotate(-orbitSpeed * 0.7 + Math.PI / 3);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, orbitRadius * 0.85, orbitRadius * 0.3, 0, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${isSelected ? 0.35 : 0.15})`;
+          ctx.lineWidth = 0.7;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // ── Layer 4: Search match pulsing ring ──
         if (isSearchMatch && !isDimmed) {
-          const pulse = 0.5 + 0.5 * Math.sin(time / 300);
-          const pulseRadius = n.radius + 12 + pulse * 6;
+          const pulse = 0.5 + 0.5 * Math.sin(time / 250);
+          const pulseRadius = r + 14 + pulse * 8;
           ctx.beginPath();
           ctx.arc(n.x, n.y, pulseRadius, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(251,146,60,${0.3 + pulse * 0.3})`;
+          ctx.strokeStyle = `rgba(251,191,36,${0.3 + pulse * 0.4})`;
           ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
           ctx.stroke();
+          ctx.setLineDash([]);
         }
 
-        // Outer glow
-        const glowRadius = n.radius + (isSelected ? 16 : isHovered ? 10 : 6);
-        const glow = ctx.createRadialGradient(n.x, n.y, n.radius * 0.5, n.x, n.y, glowRadius);
-        glow.addColorStop(0, hexToRgba(color, isSelected ? 0.35 : 0.12));
-        glow.addColorStop(1, hexToRgba(color, 0));
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, glowRadius, 0, Math.PI * 2);
-        ctx.fillStyle = glow;
-        ctx.fill();
-
-        // Main circle — size reflects content richness
-        const sizeBonus = Math.min(4, (n.flashcardCount + n.quizCount) * 0.5);
-        const r = (isHovered ? n.radius + 2 : n.radius) + sizeBonus;
+        // ── Layer 5: Main node body with gradient ──
+        const bodyGrad = ctx.createRadialGradient(
+          n.x - r * 0.25, n.y - r * 0.25, r * 0.1,
+          n.x, n.y, r
+        );
+        bodyGrad.addColorStop(0, `rgba(${Math.min(255, rgb.r + 60)},${Math.min(255, rgb.g + 60)},${Math.min(255, rgb.b + 60)},${isSelected ? 1 : 0.85})`);
+        bodyGrad.addColorStop(0.5, `rgba(${rgb.r},${rgb.g},${rgb.b},${isSelected ? 0.95 : 0.75})`);
+        bodyGrad.addColorStop(1, `rgba(${Math.max(0, rgb.r - 40)},${Math.max(0, rgb.g - 40)},${Math.max(0, rgb.b - 40)},${isSelected ? 0.9 : 0.65})`);
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = hexToRgba(color, isSelected ? 0.95 : 0.7);
+        ctx.fillStyle = bodyGrad;
         ctx.fill();
 
-        if (isSelected) {
-          ctx.strokeStyle = "rgba(255,255,255,0.7)";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
+        // Border ring
+        ctx.strokeStyle = isSelected
+          ? "rgba(255,255,255,0.8)"
+          : isHovered
+          ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.7)`
+          : `rgba(${rgb.r},${rgb.g},${rgb.b},0.3)`;
+        ctx.lineWidth = isSelected ? 2.5 : isHovered ? 1.5 : 1;
+        ctx.stroke();
 
-        // Inner highlight for 3D effect
+        // ── Layer 6: Glass highlight (crescent) ──
         ctx.beginPath();
-        ctx.arc(n.x - r * 0.2, n.y - r * 0.2, r * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.arc(n.x - r * 0.15, n.y - r * 0.2, r * 0.55, -Math.PI * 0.8, Math.PI * 0.15);
+        const glass = ctx.createLinearGradient(n.x - r, n.y - r, n.x, n.y);
+        glass.addColorStop(0, "rgba(255,255,255,0.25)");
+        glass.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = glass;
         ctx.fill();
 
-        // Label
-        ctx.font = `${isSelected || isSearchMatch ? 600 : 400} 11px -apple-system, BlinkMacSystemFont, sans-serif`;
+        // ── Layer 7: Pulsing core ──
+        const corePulse = 0.6 + 0.4 * Math.sin(time / 600 + phase * 2);
+        const coreR = r * 0.25 * corePulse;
+        const coreGrad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, coreR);
+        coreGrad.addColorStop(0, `rgba(255,255,255,${isSelected ? 0.5 : 0.3})`);
+        coreGrad.addColorStop(1, `rgba(255,255,255,0)`);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, coreR, 0, Math.PI * 2);
+        ctx.fillStyle = coreGrad;
+        ctx.fill();
+
+        // ── Label with shadow for readability ──
+        const fontSize = isSelected || isSearchMatch ? 12 : 11;
+        ctx.font = `${isSelected || isSearchMatch ? 600 : 500} ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.textAlign = "center";
-        ctx.fillStyle = isDimmed || isSearchDimmed ? "rgba(203,213,225,0.15)" : isSelected ? "rgba(241,245,249,1)" : "rgba(203,213,225,0.7)";
-        const label = n.name.length > 28 ? n.name.slice(0, 26) + "..." : n.name;
-        ctx.fillText(label, n.x, n.y + r + 16);
+        const label = n.name.length > 28 ? n.name.slice(0, 26) + "\u2026" : n.name;
+        // Text shadow
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillText(label, n.x + 1, n.y + r + 18);
+        // Actual text
+        ctx.fillStyle = isDimmed || isSearchDimmed
+          ? "rgba(203,213,225,0.45)"
+          : isSelected
+          ? "rgba(255,255,255,1)"
+          : "rgba(220,230,240,0.85)";
+        ctx.fillText(label, n.x, n.y + r + 17);
 
         ctx.globalAlpha = 1;
       }
@@ -1025,4 +1127,12 @@ function hexToRgba(hex: string, alpha: number): string {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
 }

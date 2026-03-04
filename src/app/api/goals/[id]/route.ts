@@ -1,0 +1,92 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import connectDB from "@/lib/db";
+import Goal from "@/models/Goal";
+import client from "@/lib/claude";
+import { updateGoalSchema } from "@/lib/validations/goal";
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const result = updateGoalSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: "Invalid input", details: result.error.issues }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const goal = await Goal.findById(id);
+    if (!goal || goal.userId.toString() !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    if (result.data.status !== undefined) goal.status = result.data.status;
+    if (result.data.title !== undefined) goal.title = result.data.title;
+    if (result.data.currentValue !== undefined) goal.currentValue = result.data.currentValue;
+
+    // AI suggestion
+    if (result.data.requestSuggestion) {
+      const deadlineStr = goal.deadline
+        ? `Deadline: ${goal.deadline.toISOString().split("T")[0]}`
+        : "No deadline set";
+
+      const message = await client.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 300,
+        messages: [
+          {
+            role: "user",
+            content: `This student has a goal: "${goal.title}". Target: ${goal.targetValue} ${goal.targetType.replace(/_/g, " ")}. Current progress: ${goal.currentValue}. ${deadlineStr}. Provide a brief, motivational 2-3 sentence suggestion for how to achieve this goal.`,
+          },
+        ],
+      });
+
+      const suggestion =
+        message.content[0].type === "text" ? message.content[0].text : "";
+      goal.aiSuggestion = suggestion;
+    }
+
+    await goal.save();
+
+    return NextResponse.json({ goal });
+  } catch (error) {
+    console.error("Goal update error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    await connectDB();
+
+    const goal = await Goal.findById(id);
+    if (!goal || goal.userId.toString() !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await Goal.findByIdAndDelete(id);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Goal delete error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

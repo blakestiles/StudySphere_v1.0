@@ -6,6 +6,7 @@ import { Sun, Moon, Menu, Search, GraduationCap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import UserButton from "@/components/features/auth/UserButton";
+import NotificationBell from "@/components/features/reminders/NotificationBell";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
@@ -93,6 +94,8 @@ export default function Navbar() {
               </motion.button>
             )}
           </AnimatePresence>
+
+          <NotificationBell />
 
           <UserButton />
         </div>

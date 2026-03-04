@@ -11,6 +11,8 @@ export const authConfig: NextAuthConfig = {
         "/dashboard", "/upload", "/profile", "/study-packs", "/focus",
         "/calendar", "/analytics", "/practice-essay", "/documents",
         "/knowledge-graph", "/history", "/chat", "/study-plan",
+        "/exam-simulator", "/doubt-resolver", "/notebooks", "/goals",
+        "/matching-game", "/fill-in-blank", "/audio-study", "/weekly-report",
       ];
       const isProtected = protectedPrefixes.some((p) => nextUrl.pathname.startsWith(p));
 
