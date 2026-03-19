@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const TopicSchema = new Schema({
-  studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack", required: true },
+  studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack", required: true, index: true },
   name: { type: String, required: true },
   parentTopicId: { type: Schema.Types.ObjectId, ref: "Topic" },
   content: { type: String, default: "" },

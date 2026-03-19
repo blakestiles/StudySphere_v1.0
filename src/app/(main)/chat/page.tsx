@@ -2,7 +2,11 @@ export const dynamic = "force-dynamic";
 
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import ChatPage from "@/components/features/chat/ChatPage";
+import lazyLoad from "next/dynamic";
+const ChatPage = lazyLoad(
+  () => import("@/components/features/chat/ChatPage"),
+  { loading: () => <div className="animate-pulse h-[600px] rounded-xl bg-muted/40" /> }
+);
 
 export default async function ChatRoute() {
   const session = await auth();

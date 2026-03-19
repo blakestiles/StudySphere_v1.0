@@ -2,7 +2,14 @@ export const dynamic = "force-dynamic";
 
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import KnowledgeGraph from "@/components/features/mind-map/KnowledgeGraph";
+import lazyLoad from "next/dynamic";
+
+const KnowledgeGraph = lazyLoad(
+  () => import("@/components/features/mind-map/KnowledgeGraph"),
+  { loading: () => (
+    <div className="animate-pulse rounded-xl border border-border bg-muted/30 h-[600px]" />
+  )}
+);
 
 export default async function KnowledgeGraphPage() {
   const session = await auth();

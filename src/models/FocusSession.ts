@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const FocusSessionSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack" },
   topicId: { type: Schema.Types.ObjectId, ref: "Topic" },
   duration: { type: Number, required: true },

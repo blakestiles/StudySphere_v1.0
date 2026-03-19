@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import Notebook from "@/models/Notebook";
 import StudyPack from "@/models/StudyPack";
-import CornellEditor from "@/components/features/notebooks/CornellEditor";
+import lazyLoad from "next/dynamic";
+const CornellEditor = lazyLoad(
+  () => import("@/components/features/notebooks/CornellEditor"),
+  { loading: () => <div className="animate-pulse h-96 rounded-xl bg-muted/40" /> }
+);
 
 export default async function NotebookEditorPage({
   params,

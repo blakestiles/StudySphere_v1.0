@@ -1,6 +1,9 @@
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
-import CommandPalette from "@/components/features/command-palette/CommandPalette";
+import dynamic from "next/dynamic";
+const CommandPalette = dynamic(
+  () => import("@/components/features/command-palette/CommandPalette")
+);
 
 export default function MainLayout({
   children,

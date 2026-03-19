@@ -3,7 +3,7 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** March 1, 2026
+**Date:** March 18, 2026
 
 ---
 
@@ -77,6 +77,32 @@ After completing the core study workflow, I undertook a major expansion to bring
 
 **History page:** I created a `/history` page that shows a chronological log of all user activities — quiz attempts, essay submissions, and focus sessions. Each entry displays a type icon, title, date, and score/duration, with expandable details revealing full results. The `GET /api/history` endpoint aggregates data from QuizAttempt, EssayAttempt, and FocusSession models.
 
+### Week 10: Nine New Features, Knowledge Graph Enhancements & UX Polish (Completed Mar. 4, 2026)
+
+After achieving full feature parity in Weeks 9-10, I continued expanding the application with 8 major new features, bringing the total to 21 Mongoose models, 23 pages, and 42 API routes. I also added 3 new npm packages (@dnd-kit for drag-and-drop, TipTap for rich text editing) and made significant UX improvements.
+
+**AI Exam Simulator with proctored mode:** I built a full exam simulation system (`/exam-simulator`) where users select a study pack and configure exam parameters. The `POST /api/exams/generate` endpoint sends the study pack content to Claude to generate a timed exam. The standout feature is the proctored mode, which enforces fullscreen via the Fullscreen API and monitors for tab switches using the `visibilitychange` event. Each violation triggers a warning overlay, and after 3 violations the exam auto-submits. Results are stored in the `ExamAttempt` model with violation count and time taken, and the `ExamResults` component provides a detailed post-exam review.
+
+**Smart Reminders with notification bell:** I built an AI-powered reminder system that analyzes the user's study activity (upcoming events, due flashcards, quiz performance, goals) through `POST /api/reminders/generate` and generates personalized study alerts using Claude. The `NotificationBell` component sits in the Navbar and shows an unread count badge. Clicking it opens the `ReminderPanel` dropdown listing all active reminders. Users can dismiss reminders via `PATCH /api/reminders/[id]`. The system also requests browser notification permission for native push notifications on urgent reminders.
+
+**Cornell Notes with TipTap editor:** I implemented a full notebook system with two pages: a notebook list (`/notebooks`) showing a grid of cards with titles and last-modified dates, and a Cornell-style note editor (`/notebooks/[id]`) built with the TipTap rich text editor (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-placeholder`). The Cornell layout includes sections for main notes, a cue column, and a summary area. Auto-save periodically persists content via `PATCH /api/notebooks/[id]`.
+
+**Goal Setting & Tracking:** I built a goal management page (`/goals`) where users create study goals with titles, descriptions, target values, and deadlines. The `GoalTracker` component displays each goal with a progress bar, deadline countdown, and completion status. Users can update progress or delete goals via `PATCH/DELETE /api/goals/[id]`. I also added an AI goal suggestion feature (`POST /api/goals/progress`) that analyzes the user's study patterns and recommends personalized goals.
+
+**Matching Game:** I built an interactive matching game using `@dnd-kit/core` and `@dnd-kit/sortable` for accessible drag-and-drop interactions. Users match flashcard fronts (questions) to their corresponding backs (answers) by dragging. The game includes a timer, accuracy-based scoring, and visual feedback for correct matches (green) and incorrect attempts (red shake). Rather than a standalone page, this is integrated as a tab directly inside the study pack detail viewer (`MatchingTab.tsx`), using the pack's own flashcards — no separate API route required.
+
+**Fill-in-the-Blank Quiz:** I added a cloze deletion quiz type integrated directly into study pack generation. The `generateStudyPack` prompt now instructs Claude to produce `clozeQuestions` for each topic — sentences with key terms replaced by `{{BLANK_1}}`, `{{BLANK_2}}`, etc., along with the correct answers in order. These are saved as `ClozeQuestion` records alongside the other pack content. The `ClozeTab.tsx` component presents questions one at a time with text input fields and provides instant feedback. It appears as a dedicated tab inside the study pack detail viewer; there is no separate generation route.
+
+**Audio Study Mode:** I built a dedicated audio study page (`/audio-study`) with the `AudioStudyPlayer` component that uses the browser `SpeechSynthesis` API. It reads study pack content (summaries, topic descriptions, flashcard content) aloud with full playback controls: play, pause, stop, skip forward/backward, speed control (0.5x to 2x), and voice selection from available system voices. Users can select which sections to include, and the player auto-advances through content with configurable pauses.
+
+**AI Weekly Report:** I created a weekly performance report page (`/weekly-report`) where `POST /api/weekly-report/generate` aggregates the user's past 7 days of activity (focus sessions, quiz attempts, flashcard reviews, essays, goals) and sends a comprehensive summary to Claude. The AI generates a structured report with study time trends, identified strengths, areas needing improvement, personalized recommendations, and motivational insights. Reports are stored in the `WeeklyReport` model and can be retrieved historically via `GET /api/weekly-report` for week-over-week comparisons.
+
+**Knowledge graph enhancements:** I significantly improved the knowledge graph visualization. The physics simulation now uses better repulsion forces between nodes, jitter, and organic movement for more natural positioning. Nodes feature a visually striking design with orbital rings, breathing auras, pulsing cores, and energy flow dots, all color-coded by study pack.
+
+**Global loading skeleton:** I added a `loading.tsx` file in the `(main)` route group that provides instant visual feedback during page transitions with pulsing skeleton placeholders, preventing layout shift.
+
+**Navigation updates:** The sidebar was updated to cover all 23 pages. The command palette (Cmd+K) was updated with all new pages. The auth config was extended to protect all new routes. The `NotificationBell` component was added to the Navbar.
+
 ---
 
 ## 2. Challenges
@@ -99,27 +125,35 @@ After completing the core study workflow, I undertook a major expansion to bring
 
 **Recharts and server components:** Recharts components use browser APIs and cannot render in Next.js server components. I had to ensure all chart containers were marked as client components with `"use client"` and that data fetching happened server-side before being passed as props, or via client-side `fetch` calls to the analytics API.
 
-**Mind map and knowledge graph layout:** Positioning nodes in SVG without a physics engine required manual layout algorithms. For mind maps, I used a recursive tree layout that calculates node positions based on depth and sibling count. For the knowledge graph, I implemented a simplified force-directed-style placement algorithm. Both handle variable node counts and text lengths.
+**Mind map and knowledge graph layout:** Positioning nodes in SVG without a physics engine required manual layout algorithms. For mind maps, I used a recursive tree layout that calculates node positions based on depth and sibling count. For the knowledge graph, I implemented a simplified force-directed-style placement algorithm. Both handle variable node counts and text lengths. Enhancing the knowledge graph with organic movement (jitter, breathing auras, orbital rings) required careful animation tuning to avoid performance issues — I used `requestAnimationFrame` with throttled updates.
+
+**Fullscreen API and proctoring enforcement:** Implementing the proctored exam mode required handling cross-browser inconsistencies with the Fullscreen API (`requestFullscreen` vs. `webkitRequestFullscreen`). The `visibilitychange` event fires reliably for tab switches, but I had to handle edge cases like the browser's DevTools being opened (which also triggers a visibility change). I settled on a 3-strike system with clear warnings rather than immediate termination, balancing strictness with user experience.
+
+**TipTap rich text editor integration:** Integrating TipTap with Next.js required ensuring the editor component was client-side only (`"use client"`) since TipTap depends on browser APIs. The auto-save implementation needed debouncing to avoid excessive API calls — I used a timer that resets on each keystroke and only saves after 2 seconds of inactivity.
+
+**@dnd-kit drag-and-drop accessibility:** The matching game required careful implementation to ensure drag-and-drop was accessible. @dnd-kit provides built-in keyboard navigation and screen reader announcements, but I had to configure proper ARIA labels for each draggable item and drop zone to make the game usable without a mouse.
+
+**SpeechSynthesis cross-browser quirks:** The Audio Study Mode revealed that the `SpeechSynthesis` API has significant cross-browser differences. Chrome requires a user gesture before speaking, Safari has different voice availability, and the `voiceschanged` event fires at unpredictable times. I added a voice loading callback and fallback defaults to handle cases where preferred voices aren't available.
 
 ---
 
 ## 3. Blockers
 
-None. All Week 5-10 deliverables are fully implemented and functional. The application is feature-complete with 15 models, 17 pages, and 29 API routes. Users can register, upload documents, generate AI study packs (with summaries, topics, flashcards, quizzes, and mind maps), review flashcards with spaced repetition, take quizzes with weak area analysis, use Pomodoro focus mode, chat with the AI tutor (with voice and ELI5 mode), write practice essays with AI grading, manage study events on a calendar, generate AI study plans, track analytics and streaks, annotate documents, and explore topic relationships via the knowledge graph.
+None. All Week 5-10 deliverables are fully implemented and functional. The application is feature-complete with 21 models, 23 pages, and 42 API routes. Users can register, upload documents, generate AI study packs (with summaries, topics, flashcards, quizzes, cloze questions, and mind maps), review flashcards with spaced repetition, take quizzes with weak area analysis, use Pomodoro focus mode, chat with the AI tutor (with voice and ELI5 mode), write practice essays with AI grading, manage study events on a calendar, generate AI study plans, track analytics and streaks, annotate documents, explore topic relationships via the knowledge graph, take proctored AI-generated exams, receive smart AI-generated study reminders, take Cornell-style notes with a rich text editor, set and track study goals with AI suggestions, play the flashcard matching game, complete fill-in-the-blank quizzes — both integrated directly inside the study pack detail page — listen to study material via audio mode, and review AI-generated weekly performance reports.
 
 ---
 
 ## 4. TODO
 
-**Weeks 10-11 — Testing & Refinement (target: Mar. 16, 2026)**
-- Unit and integration testing for all 29 API routes
-- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → analytics)
+**Weeks 11-12 — Testing & Refinement (target: Mar. 16, 2026)**
+- Unit and integration testing for all 46 API routes
+- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → exam → doubt resolver → matching game → fill-in-blank → goals → weekly report → analytics)
 - Performance optimization (database query indexing, response payload optimization)
 - UI/UX refinements based on testing feedback and usability review
 - **Evaluation:** All tests pass, no critical bugs, response times are acceptable under normal load.
 - **Deliverables:** Test suite, performance benchmarks, bug fixes, code pushed to GitHub
 
-**Weeks 11-12 — Deployment & Documentation (target: Mar. 30, 2026)**
+**Week 12 — Deployment & Documentation (target: Mar. 30, 2026)**
 - Deploy to Vercel with production environment configuration
 - Configure production MongoDB Atlas cluster with proper access controls
 - Set up environment variables (MONGODB_URI, NEXTAUTH_SECRET, ANTHROPIC_API_KEY)

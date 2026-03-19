@@ -6,6 +6,7 @@ import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
 import Flashcard from "@/models/Flashcard";
 import QuizQuestion from "@/models/QuizQuestion";
+import ClozeQuestion from "@/models/ClozeQuestion";
 import { generateStudyPackSchema } from "@/lib/validations/study-pack";
 import { generateStudyPack } from "@/lib/study-pack-generator";
 
@@ -58,9 +59,10 @@ export async function POST(request: Request) {
       }))
     );
 
-    // Create flashcards and quiz questions for each topic
+    // Create flashcards, quiz questions, and cloze questions for each topic
     const flashcardsToInsert: any[] = [];
     const quizQuestionsToInsert: any[] = [];
+    const clozeQuestionsToInsert: any[] = [];
 
     generated.topics.forEach((t, i) => {
       const topicId = topicDocs[i]._id;
@@ -85,11 +87,24 @@ export async function POST(request: Request) {
           explanation: qq.explanation,
         });
       }
+
+      if (t.clozeQuestions) {
+        for (const cq of t.clozeQuestions) {
+          clozeQuestionsToInsert.push({
+            studyPackId: studyPack._id,
+            topicId,
+            originalText: cq.originalText,
+            blankedText: cq.blankedText,
+            answers: cq.answers,
+          });
+        }
+      }
     });
 
     await Promise.all([
       flashcardsToInsert.length > 0 ? Flashcard.insertMany(flashcardsToInsert) : Promise.resolve(),
       quizQuestionsToInsert.length > 0 ? QuizQuestion.insertMany(quizQuestionsToInsert) : Promise.resolve(),
+      clozeQuestionsToInsert.length > 0 ? ClozeQuestion.insertMany(clozeQuestionsToInsert) : Promise.resolve(),
     ]);
 
     studyPack.status = "ready";

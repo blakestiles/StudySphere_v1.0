@@ -4,7 +4,11 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import StudyPack from "@/models/StudyPack";
-import StudyCalendar from "@/components/features/calendar/StudyCalendar";
+import lazyLoad from "next/dynamic";
+const StudyCalendar = lazyLoad(
+  () => import("@/components/features/calendar/StudyCalendar"),
+  { loading: () => <div className="animate-pulse h-96 rounded-xl bg-muted/40" /> }
+);
 
 export default async function CalendarPage() {
   const session = await auth();

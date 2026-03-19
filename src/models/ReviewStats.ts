@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const ReviewStatsSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   date: { type: Date, required: true },
   cardsReviewed: { type: Number, default: 0 },
   cardsCorrect: { type: Number, default: 0 },

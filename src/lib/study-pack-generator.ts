@@ -26,6 +26,11 @@ export interface GeneratedStudyPack {
       correctAnswer: number;
       explanation: string;
     }[];
+    clozeQuestions: {
+      originalText: string;
+      blankedText: string;
+      answers: string[];
+    }[];
   }[];
   mindMap: MindMapNode;
 }
@@ -78,6 +83,13 @@ Generate a JSON object with the following structure:
           "correctAnswer": 0,
           "explanation": "Why this answer is correct"
         }
+      ],
+      "clozeQuestions": [
+        {
+          "originalText": "The original sentence with all terms intact",
+          "blankedText": "The sentence with {{BLANK_1}} replacing important term and {{BLANK_2}} replacing another",
+          "answers": ["first term", "second term"]
+        }
       ]
     }
   ],
@@ -97,6 +109,8 @@ Requirements:
 - Each topic should have 2-5 flashcards of varying difficulty
 - Each topic should have 2-4 quiz questions with exactly 4 options each
 - correctAnswer is the 0-based index of the correct option
+- Each topic should have 2-3 cloze (fill-in-the-blank) questions
+- For cloze questions: take a key sentence from the material, replace 1-3 important terms with {{BLANK_1}}, {{BLANK_2}}, etc. The answers array must contain the replaced terms in order.
 - Make questions test understanding, not just memorization
 - The mindMap should mirror the topic structure with 2-3 subtopics per topic as children
 - Return ONLY valid JSON, no additional text`,

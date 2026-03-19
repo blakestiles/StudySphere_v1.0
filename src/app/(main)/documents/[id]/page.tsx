@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import Document from "@/models/Document";
 import Annotation from "@/models/Annotation";
-import DocumentViewer from "@/components/features/documents/DocumentViewer";
+import dynamic from "next/dynamic";
+const DocumentViewer = dynamic(
+  () => import("@/components/features/documents/DocumentViewer"),
+  { loading: () => <div className="animate-pulse h-[600px] rounded-xl bg-muted/40" /> }
+);
 
 export default async function DocumentDetailPage({
   params,

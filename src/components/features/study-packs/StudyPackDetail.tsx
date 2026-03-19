@@ -1,9 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import FlashcardViewer from "./FlashcardViewer";
-import QuizInterface from "@/components/features/quiz/QuizInterface";
-import MindMapView from "@/components/features/mind-map/MindMapView";
+import dynamic from "next/dynamic";
+
+function TabSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3">
+      <div className="h-40 rounded-xl bg-muted/40" />
+      <div className="h-24 rounded-xl bg-muted/30" />
+    </div>
+  );
+}
+
+const FlashcardViewer = dynamic(() => import("./FlashcardViewer"), { loading: () => <TabSkeleton /> });
+const QuizInterface = dynamic(() => import("@/components/features/quiz/QuizInterface"), { loading: () => <TabSkeleton /> });
+const MindMapView = dynamic(() => import("@/components/features/mind-map/MindMapView"), { loading: () => <TabSkeleton /> });
+const ClozeTab = dynamic(() => import("@/components/features/cloze/ClozeTab"), { loading: () => <TabSkeleton /> });
+const MatchingTab = dynamic(() => import("@/components/features/matching/MatchingTab"), { loading: () => <TabSkeleton /> });
 
 interface MindMapNode {
   id: string;
@@ -53,11 +66,20 @@ interface SerializedQuizQuestion {
   topicId?: string;
 }
 
+interface SerializedClozeQuestion {
+  _id: string;
+  originalText: string;
+  blankedText: string;
+  answers: string[];
+  blankCount: number;
+}
+
 interface StudyPackDetailProps {
   studyPack: SerializedStudyPack;
   topics: SerializedTopic[];
   flashcards: SerializedFlashcard[];
   quizQuestions: SerializedQuizQuestion[];
+  clozeQuestions: SerializedClozeQuestion[];
 }
 
 // ── Depth colors (matching MindMapView) ────────────────
@@ -78,7 +100,7 @@ function getDepthColor(index: number) {
 
 // ── Tab definitions ────────────────────────────────────
 
-type TabKey = "summary" | "mindmap" | "topics" | "flashcards" | "quiz";
+type TabKey = "summary" | "mindmap" | "topics" | "flashcards" | "quiz" | "fillinblank" | "matching";
 
 interface TabDef {
   key: TabKey;
@@ -129,6 +151,22 @@ function CheckCircleIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function PuzzleIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+    </svg>
+  );
+}
+
+function TextCursorIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 4h1a3 3 0 013 3 3 3 0 013-3h1M5 20h1a3 3 0 003-3 3 3 0 003 3h1M12 4v16M8 4h8M8 20h8" />
     </svg>
   );
 }
@@ -214,6 +252,7 @@ export default function StudyPackDetail({
   topics,
   flashcards,
   quizQuestions,
+  clozeQuestions,
 }: StudyPackDetailProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("summary");
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
@@ -224,6 +263,8 @@ export default function StudyPackDetail({
     { key: "topics", label: "Topics", icon: <LayersIcon />, count: topics.length },
     { key: "flashcards", label: "Flashcards", icon: <CardsIcon />, count: flashcards.length },
     { key: "quiz", label: "Quiz", icon: <CheckCircleIcon />, count: quizQuestions.length },
+    { key: "fillinblank", label: "Fill in Blank", icon: <TextCursorIcon />, count: clozeQuestions.length },
+    { key: "matching", label: "Matching", icon: <PuzzleIcon />, count: flashcards.length },
   ];
 
   // ── Generating state ───────────────────────────────
@@ -293,6 +334,7 @@ export default function StudyPackDetail({
   if (topics.length > 0) statParts.push(`${topics.length} Topic${topics.length !== 1 ? "s" : ""}`);
   if (flashcards.length > 0) statParts.push(`${flashcards.length} Flashcard${flashcards.length !== 1 ? "s" : ""}`);
   if (quizQuestions.length > 0) statParts.push(`${quizQuestions.length} Quiz Question${quizQuestions.length !== 1 ? "s" : ""}`);
+  if (clozeQuestions.length > 0) statParts.push(`${clozeQuestions.length} Fill-in-Blank`);
 
   return (
     <div className="space-y-6">
@@ -468,6 +510,48 @@ export default function StudyPackDetail({
                 questions={quizQuestions}
                 studyPackId={studyPack._id}
               />
+            )}
+          </>
+        )}
+
+        {/* Fill-in-Blank Tab */}
+        {activeTab === "fillinblank" && (
+          <>
+            {clozeQuestions.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card py-16 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <TextCursorIcon />
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No fill-in-the-blank questions available yet.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Regenerate the study pack to create them.
+                </p>
+              </div>
+            ) : (
+              <ClozeTab questions={clozeQuestions} />
+            )}
+          </>
+        )}
+
+        {/* Matching Tab */}
+        {activeTab === "matching" && (
+          <>
+            {flashcards.length < 2 ? (
+              <div className="rounded-xl border border-border bg-card py-16 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <PuzzleIcon />
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Not enough flashcards for the matching game.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  At least 2 flashcards are needed.
+                </p>
+              </div>
+            ) : (
+              <MatchingTab flashcards={flashcards} />
             )}
           </>
         )}

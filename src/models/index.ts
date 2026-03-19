@@ -14,7 +14,7 @@ export { default as ChatMessage } from "./ChatMessage";
 export { default as Annotation } from "./Annotation";
 export { default as ReviewStats } from "./ReviewStats";
 export { default as ExamAttempt } from "./ExamAttempt";
-export { default as DoubtResolution } from "./DoubtResolution";
+
 export { default as Reminder } from "./Reminder";
 export { default as Notebook } from "./Notebook";
 export { default as Goal } from "./Goal";

@@ -16,6 +16,7 @@ export default async function DocumentsPage() {
 
   const documents = await Document.find({ userId: session.user.id })
     .sort({ uploadedAt: -1 })
+    .select("-rawText")
     .lean();
 
   return (

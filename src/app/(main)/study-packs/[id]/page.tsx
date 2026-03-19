@@ -7,6 +7,7 @@ import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
 import Flashcard from "@/models/Flashcard";
 import QuizQuestion from "@/models/QuizQuestion";
+import ClozeQuestion from "@/models/ClozeQuestion";
 import StudyPackDetail from "@/components/features/study-packs/StudyPackDetail";
 
 export default async function StudyPackPage({
@@ -27,10 +28,11 @@ export default async function StudyPackPage({
     redirect("/study-packs");
   }
 
-  const [topics, flashcards, quizQuestions] = await Promise.all([
+  const [topics, flashcards, quizQuestions, clozeQuestions] = await Promise.all([
     Topic.find({ studyPackId: id }).sort({ order: 1 }).lean(),
     Flashcard.find({ studyPackId: id }).lean(),
     QuizQuestion.find({ studyPackId: id }).lean(),
+    ClozeQuestion.find({ studyPackId: id }).lean(),
   ]);
 
   const serializedStudyPack = {
@@ -75,6 +77,14 @@ export default async function StudyPackPage({
     topicId: q.topicId ? String(q.topicId) : undefined,
   }));
 
+  const serializedClozeQuestions = clozeQuestions.map((c) => ({
+    _id: String(c._id),
+    originalText: c.originalText as string,
+    blankedText: c.blankedText as string,
+    answers: c.answers as string[],
+    blankCount: (c.answers as string[]).length,
+  }));
+
   return (
     <div className="max-w-4xl mx-auto">
       <StudyPackDetail
@@ -82,6 +92,7 @@ export default async function StudyPackPage({
         topics={serializedTopics}
         flashcards={serializedFlashcards}
         quizQuestions={serializedQuizQuestions}
+        clozeQuestions={serializedClozeQuestions}
       />
     </div>
   );

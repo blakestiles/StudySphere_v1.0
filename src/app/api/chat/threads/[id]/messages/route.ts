@@ -88,11 +88,13 @@ export async function POST(
       const studyPack = await StudyPack.findById(thread.studyPackId).lean();
       if (studyPack) {
         packTitle = studyPack.title as string;
-        const doc = await Document.findById(studyPack.documentId).lean();
+        const [doc, topics] = await Promise.all([
+          Document.findById(studyPack.documentId).lean(),
+          Topic.find({ studyPackId: thread.studyPackId }).select("name").lean(),
+        ]);
         if (doc) {
           contextText = (doc.rawText as string).slice(0, 60000);
         }
-        const topics = await Topic.find({ studyPackId: thread.studyPackId }).lean();
         topicNames = topics.map((t) => t.name as string);
       }
     }

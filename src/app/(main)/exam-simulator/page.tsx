@@ -4,7 +4,11 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import StudyPack from "@/models/StudyPack";
-import ExamSimulator from "@/components/features/exam/ExamSimulator";
+import lazyLoad from "next/dynamic";
+const ExamSimulator = lazyLoad(
+  () => import("@/components/features/exam/ExamSimulator"),
+  { loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted/40" /> }
+);
 
 export default async function ExamSimulatorPage() {
   const session = await auth();

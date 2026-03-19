@@ -26,6 +26,15 @@ import {
   ArrowRight,
   GraduationCap,
   ChevronDown,
+  ClipboardCheck,
+
+  Bell,
+  StickyNote,
+  Trophy,
+  Puzzle,
+
+  Headphones,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
@@ -51,22 +60,31 @@ const coreFeatures: { icon: LucideIcon; title: string; desc: string; color: stri
   { icon: Brain, title: "Adaptive Quizzes", desc: "MCQ quizzes that identify your weak areas and generate targeted questions to close knowledge gaps.", color: "text-violet-400", bg: "bg-violet-400/10" },
   { icon: MessageSquare, title: "AI Tutor", desc: "Chat with an AI that has read every word of your material. Ask anything and get cited, grounded answers.", color: "text-amber-400", bg: "bg-amber-400/10" },
   { icon: PenTool, title: "Practice Essays", desc: "Write essay answers and get AI grading on Accuracy, Depth, Clarity, and Critical Thinking with actionable feedback.", color: "text-rose-400", bg: "bg-rose-400/10" },
+  { icon: ClipboardCheck, title: "AI Exam Simulator", desc: "Timed, proctored exams with fullscreen lockdown, tab-switch warnings, and auto-submit to simulate real test conditions.", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+
 ];
 
 const powerTools: { icon: LucideIcon; title: string; desc: string; color: string }[] = [
   { icon: Timer, title: "Focus Mode", desc: "Pomodoro timer with animated arcs, AI micro-goals, phase tracking, and session recaps to keep you locked in.", color: "text-orange-500" },
   { icon: CalendarDays, title: "AI Study Planner", desc: "Set your exam date and let AI generate a day-by-day study schedule with calendar events auto-created for you.", color: "text-blue-400" },
-  { icon: Map, title: "Knowledge Graph", desc: "Force-directed visualization mapping topics across your entire library with glowing nodes and animated connections.", color: "text-emerald-400" },
+  { icon: Map, title: "Knowledge Graph", desc: "Force-directed visualization with orbital rings, breathing auras, and pulsing nodes mapping topics across your library.", color: "text-emerald-400" },
   { icon: BarChart3, title: "Analytics Dashboard", desc: "Track study streaks, quiz scores, flashcard accuracy, weak areas, and study time with beautiful charts.", color: "text-violet-400" },
-  { icon: CalendarDays, title: "Study Calendar", desc: "Plan and track study sessions with a visual calendar. Never miss a review or study goal.", color: "text-amber-400" },
-  { icon: BookOpen, title: "Document Viewer", desc: "Read your uploaded materials with highlighting, annotations, and AI-powered note-taking built right in.", color: "text-rose-400" },
+  { icon: StickyNote, title: "Cornell Notes", desc: "Rich text editor with cue column, summary sections, and auto-save. The proven note-taking method, digitized.", color: "text-amber-400" },
+  { icon: Trophy, title: "Goal Setting & Tracking", desc: "Set study goals with deadlines, track progress with visual bars, and get AI-powered goal suggestions.", color: "text-rose-400" },
+  { icon: Headphones, title: "Audio Study Mode", desc: "Listen to your study material with text-to-speech, adjustable speed, and voice selection for hands-free learning.", color: "text-pink-400" },
+  { icon: Bell, title: "Smart Reminders", desc: "AI-generated study alerts with browser notifications so you never miss a review session.", color: "text-teal-400" },
+  { icon: TrendingUp, title: "AI Weekly Report", desc: "Automated performance analysis with trends, strengths, weak spots, and personalized recommendations every week.", color: "text-indigo-400" },
+  { icon: CalendarDays, title: "Study Calendar", desc: "Plan and track study sessions with a visual calendar. Never miss a review or study goal.", color: "text-sky-400" },
+  { icon: BookOpen, title: "Document Viewer", desc: "Read your uploaded materials with highlighting, annotations, and AI-powered note-taking built right in.", color: "text-lime-400" },
 ];
 
 const useCases: { icon: LucideIcon; title: string; desc: string }[] = [
-  { icon: GraduationCap, title: "Exam Prep", desc: "Upload your syllabus and notes, generate a study plan, and let AI quiz you until you're exam-ready." },
-  { icon: BookOpen, title: "Lecture Review", desc: "Turn lecture slides into flashcards and summaries. Review in minutes what took hours to sit through." },
-  { icon: FileText, title: "Research Papers", desc: "Extract key arguments, build concept maps, and practice explaining the material with AI." },
-  { icon: Clock, title: "Last-Minute Cramming", desc: "Focus mode + adaptive quizzes + AI-prioritized weak areas. Maximum results, minimum time." },
+  { icon: GraduationCap, title: "Exam Prep", desc: "Upload your syllabus, simulate proctored exams, and let AI quiz you until you're exam-ready." },
+  { icon: BookOpen, title: "Lecture Review", desc: "Turn lecture slides into flashcards, Cornell notes, and audio summaries. Review in minutes what took hours to sit through." },
+  { icon: FileText, title: "Research Papers", desc: "Extract key arguments, build knowledge graphs across papers, and practice explaining the material with AI." },
+  { icon: Clock, title: "Last-Minute Cramming", desc: "Focus mode + adaptive quizzes + AI-prioritized weak areas + audio study mode. Maximum results, minimum time." },
+  { icon: Trophy, title: "Semester-Long Goals", desc: "Set study goals, track weekly progress with AI reports, and get smart reminders to stay on schedule all semester." },
+  { icon: Puzzle, title: "Active Recall Practice", desc: "Matching games, fill-in-the-blank challenges, and spaced repetition flashcards — all built into every study pack." },
 ];
 
 const testimonials = [
@@ -107,7 +125,7 @@ export default function LandingPage() {
 
   const filteredFeatures = coreFeatures.filter((f) => {
     if (activeFeatureTab === "all") return true;
-    if (activeFeatureTab === "ai") return ["AI Tutor", "Smart Summaries", "Adaptive Quizzes", "Practice Essays"].includes(f.title);
+    if (activeFeatureTab === "ai") return ["AI Tutor", "Smart Summaries", "Adaptive Quizzes", "Practice Essays", "AI Exam Simulator"].includes(f.title);
     return ["Mind Maps", "Spaced Repetition Flashcards"].includes(f.title);
   });
 
@@ -195,8 +213,8 @@ export default function LandingPage() {
             className="mt-6 sm:mt-8 text-gray-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed"
           >
             Your notes, slides, or textbooks go in. Flashcards, quizzes,
-            summaries, mind maps, and a personal AI tutor that knows every page
-            come out.
+            summaries, mind maps, exam simulators, and a personal AI tutor that
+            knows every page come out. 26 pages of pure study power.
             <br />
             <span className="text-gray-500 italic">
               Like magic, but it&apos;s real.
@@ -247,7 +265,7 @@ export default function LandingPage() {
             {[
               { value: "4.9", suffix: "★", label: "Average Rating" },
               { value: "50K+", suffix: "", label: "Study Packs Created" },
-              { value: "1000K+", suffix: "", label: "Flashcards Generated" },
+              { value: "20+", suffix: "", label: "AI-Powered Features" },
               { value: "98%", suffix: "", label: "Student Satisfaction" },
             ].map((stat) => (
               <div key={stat.label}>
@@ -334,7 +352,7 @@ export default function LandingPage() {
             {[
               { num: "01", icon: Upload, title: "Upload anything", desc: "PDF, text, lecture notes, textbook chapters, or slides. Just drop it in." },
               { num: "02", icon: Zap, title: "AI does the heavy lifting", desc: "In seconds, get a complete study pack: summaries, flashcards, quizzes, mind maps, and topic outlines." },
-              { num: "03", icon: Target, title: "Study smarter, not harder", desc: "Use spaced repetition, take adaptive quizzes, chat with your AI tutor, practice essays, and track your progress." },
+              { num: "03", icon: Target, title: "Study smarter, not harder", desc: "Use spaced repetition, take proctored exams, chat with your AI tutor, play matching games inside study packs, and track everything with weekly reports." },
             ].map((step, i) => (
               <ScrollReveal key={step.num} delay={i * 0.15}>
                 <SpotlightCard className="h-full" spotlightColor="rgba(249, 115, 22, 0.06)">

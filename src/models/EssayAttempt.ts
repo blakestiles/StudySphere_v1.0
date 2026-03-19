@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const EssayAttemptSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack" },
   question: { type: String, required: true },
   essayText: { type: String, required: true },

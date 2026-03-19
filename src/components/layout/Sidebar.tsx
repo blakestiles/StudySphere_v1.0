@@ -21,11 +21,11 @@ import {
   History,
   User,
   ClipboardCheck,
-  HelpCircle,
+
   NotebookPen,
   Trophy,
-  Puzzle,
-  TextCursorInput,
+
+
   Headphones,
   FileBarChart,
 } from "lucide-react";
@@ -45,11 +45,11 @@ const navItems = [
   { label: "Study Plan", href: "/study-plan", icon: CalendarRange, color: "amber" },
   { label: "Knowledge Graph", href: "/knowledge-graph", icon: Brain, color: "cyan" },
   { label: "Exam Simulator", href: "/exam-simulator", icon: ClipboardCheck, color: "rose" },
-  { label: "Doubt Resolver", href: "/doubt-resolver", icon: HelpCircle, color: "blue" },
+
   { label: "Notebooks", href: "/notebooks", icon: NotebookPen, color: "emerald" },
   { label: "Goals", href: "/goals", icon: Trophy, color: "amber" },
-  { label: "Matching Game", href: "/matching-game", icon: Puzzle, color: "violet" },
-  { label: "Fill-in-Blank", href: "/fill-in-blank", icon: TextCursorInput, color: "cyan" },
+
+
   { label: "Audio Study", href: "/audio-study", icon: Headphones, color: "blue" },
   { label: "Weekly Report", href: "/weekly-report", icon: FileBarChart, color: "orange" },
   { label: "History", href: "/history", icon: History, color: "gray" },

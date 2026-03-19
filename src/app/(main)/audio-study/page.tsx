@@ -4,7 +4,11 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import StudyPack from "@/models/StudyPack";
-import AudioStudyPlayer from "@/components/features/audio/AudioStudyPlayer";
+import lazyLoad from "next/dynamic";
+const AudioStudyPlayer = lazyLoad(
+  () => import("@/components/features/audio/AudioStudyPlayer"),
+  { loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted/40" /> }
+);
 
 export default async function AudioStudyPage() {
   const session = await auth();

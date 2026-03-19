@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const ClozeQuestionSchema = new Schema({
-  studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack", required: true },
+  studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack", required: true, index: true },
   originalText: { type: String, required: true },
   blankedText: { type: String, required: true },
   answers: [{ type: String }],

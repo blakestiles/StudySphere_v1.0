@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const AnnotationSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   documentId: { type: Schema.Types.ObjectId, ref: "Document", required: true },
   type: { type: String, enum: ["highlight", "underline", "note"], default: "highlight" },
   color: { type: String, default: "#fbbf24" },

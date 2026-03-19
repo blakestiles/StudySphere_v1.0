@@ -21,24 +21,24 @@ export default async function ProfileServerPage() {
   const userId = session.user.id;
   const userObjectId = mongoose.Types.ObjectId.createFromHexString(userId);
 
-  // Get user's study pack IDs for flashcard lookup
-  const userPackIds = await StudyPack.find({ userId }).select("_id").lean();
-  const packIds = userPackIds.map((p) => p._id);
-
-  const [user, documentCount, studyPackCount, quizAttempts, focusSessionCount, essayAttempts, flashcards, reviewStatsAgg] =
+  // Run all independent queries in parallel; flashcards depend on packIds so run after
+  const [userPackIds, user, documentCount, quizAttempts, focusSessionCount, essayAttempts, reviewStatsAgg] =
     await Promise.all([
+      StudyPack.find({ userId }).select("_id").lean(),
       User.findById(userId).lean(),
       Document.countDocuments({ userId }),
-      StudyPack.countDocuments({ userId }),
       QuizAttempt.find({ userId }).select("score totalQuestions").lean(),
       FocusSession.countDocuments({ userId }),
       EssayAttempt.find({ userId }).select("scores.overall").lean(),
-      Flashcard.find({ studyPackId: { $in: packIds } }).select("repetitions lastSeenAt").lean(),
       ReviewStats.aggregate([
         { $match: { userId: userObjectId } },
         { $group: { _id: null, totalCardsReviewed: { $sum: "$cardsReviewed" } } },
       ]),
     ]);
+
+  const packIds = userPackIds.map((p) => p._id);
+  const studyPackCount = userPackIds.length;
+  const flashcards = await Flashcard.find({ studyPackId: { $in: packIds } }).select("repetitions lastSeenAt").lean();
 
   if (!user) redirect("/login");
 

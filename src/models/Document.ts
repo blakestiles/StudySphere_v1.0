@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const DocumentSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   title: { type: String, required: true },
   originalFilename: { type: String },
   fileType: { type: String, enum: ["pdf", "text"], required: true },

@@ -3,7 +3,7 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** March 1, 2026
+**Date:** March 18, 2026
 
 ---
 
@@ -26,6 +26,8 @@
 | Command Palette | cmdk | latest |
 | Markdown Rendering | react-markdown + remark-gfm | latest |
 | Date Utilities | date-fns | latest |
+| Rich Text Editor | TipTap (@tiptap/react + starter-kit) | 3.20.0 |
+| Drag & Drop | @dnd-kit/core + @dnd-kit/sortable | 6.3.1 / 10.0.0 |
 
 ---
 
@@ -731,15 +733,210 @@ StudySphere/
 
 ---
 
-## Remaining Work (Weeks 10-13)
+## Week 10: Nine New Features, Knowledge Graph Enhancements & UX Polish
 
-### Weeks 10-11: Testing & Refinement
-- Unit and integration testing for all 29 API routes
-- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → analytics)
+Building on the full feature parity achieved in Weeks 9-10, this phase added 8 major new features, 6 new Mongoose models (21 total), 6 new pages (23 total), 13 new API routes (42 total), and significant UX improvements including a global loading skeleton and enhanced knowledge graph visualization.
+
+### 1. AI Exam Simulator (`/exam-simulator`)
+
+#### 1.1 Exam Generation
+- Users select a study pack and configure exam parameters (number of questions, time limit)
+- `POST /api/exams/generate` sends the study pack content to Claude, which generates a timed exam with multiple-choice and short-answer questions
+- Questions are returned with correct answers and explanations for post-exam review
+
+#### 1.2 Proctored Mode
+- Optional fullscreen enforcement using the Fullscreen API — the exam starts in fullscreen and monitors for exits
+- Tab-switch detection using `visibilitychange` events — each tab switch triggers a warning overlay
+- Auto-submit after 3 violations to simulate real proctoring conditions
+- Violation count displayed throughout the exam
+
+#### 1.3 Exam Results
+- `POST /api/exams/submit` scores the exam and creates an `ExamAttempt` record
+- `ExamResults` component shows overall score, per-question review with correct/incorrect indicators, and explanations
+- Results stored with violation count and time taken for analytics
+
+#### 1.4 ExamAttempt Model
+- Fields: userId, studyPackId, questions, answers, score, totalQuestions, violations, timeLimit, timeTaken, completedAt
+
+### 2. Smart Reminders with Notification Bell
+
+#### 2.1 AI-Generated Reminders
+- `POST /api/reminders/generate` analyzes the user's study activity (upcoming events, due flashcards, quiz performance, goals) and uses Claude to generate personalized study reminders
+- Reminders include actionable suggestions like "Review flashcards from [topic] — 15 cards due today" or "You haven't studied [pack] in 3 days"
+
+#### 2.2 Notification Bell (Navbar)
+- `NotificationBell` component in the Navbar shows unread reminder count as a badge
+- Clicking opens the `ReminderPanel` dropdown with all active reminders
+- Users can dismiss individual reminders via `PATCH /api/reminders/[id]`
+
+#### 2.3 Browser Notifications
+- Requests browser notification permission and sends native push notifications for urgent reminders
+- `GET /api/reminders` retrieves all active reminders for the user
+
+#### 2.4 Reminder Model
+- Fields: userId, title, message, type, read, actionUrl, createdAt
+
+### 3. Cornell Notes (`/notebooks`, `/notebooks/[id]`)
+
+#### 3.1 Notebook Management
+- `GET /api/notebooks` lists all user notebooks sorted by last modified
+- `POST /api/notebooks` creates a new notebook with title
+- `NotebookList` component shows a grid of notebook cards with title, preview, and last-modified date
+
+#### 3.2 Cornell Editor
+- Full rich text editor using TipTap (`@tiptap/react` with `@tiptap/starter-kit` and `@tiptap/extension-placeholder`)
+- Cornell note-taking layout with sections for main notes, cue column, and summary
+- Auto-save functionality that periodically sends content to `PATCH /api/notebooks/[id]`
+- `DELETE /api/notebooks/[id]` for notebook removal
+
+#### 3.3 Notebook Model
+- Fields: userId, title, content (JSON), cues, summary, createdAt, updatedAt
+
+### 4. Goal Setting & Tracking (`/goals`)
+
+#### 4.1 Goal Management
+- Users create study goals with title, description, target value, and deadline
+- `POST /api/goals` creates a goal; `PATCH /api/goals/[id]` updates progress or details; `DELETE /api/goals/[id]` removes goals
+- `GoalTracker` component displays goals with progress bars, deadline countdowns, and completion status
+
+#### 4.2 AI Goal Suggestions
+- `POST /api/goals/progress` analyzes the user's study activity and uses Claude to suggest personalized goals based on current performance patterns
+
+#### 4.3 Goal Model
+- Fields: userId, title, description, targetValue, currentValue, unit, deadline, completed, createdAt
+
+### 5. Matching Game (Study Pack Tab)
+
+#### 5.1 Integration as Study Pack Tab
+- The Matching Game is integrated as a tab (`MatchingTab.tsx`) within the study pack detail page (`/study-packs/[id]`), not a standalone page
+- Flashcard pairs for the game are sourced directly from the study pack's existing flashcards — no separate API endpoint required
+
+#### 5.2 Game Mechanics
+- Built with `@dnd-kit/core` and `@dnd-kit/sortable` for accessible drag-and-drop
+- Users match flashcard fronts (questions) to their corresponding backs (answers) by dragging
+- Timer tracks how long the matching takes; score based on accuracy and speed
+- Visual feedback for correct matches (green) and incorrect attempts (red shake)
+- Completion screen with final score and option to replay
+
+### 6. Fill-in-the-Blank Quiz (Study Pack Tab)
+
+#### 6.1 Auto-Generation with Study Packs
+- Cloze (fill-in-the-blank) questions are now generated automatically as part of study pack generation — no separate on-demand API call required
+- The study pack generator (`study-pack-generator.ts`) prompts Claude to produce cloze questions alongside flashcards and quiz questions
+
+#### 6.2 Interactive Quiz Tab
+- `ClozeTab.tsx` presents cloze questions as a tab within the study pack detail page (`/study-packs/[id]`)
+- Text input fields for each blank with instant feedback (correct/incorrect) and the correct answer shown for wrong responses
+- `POST /api/cloze/submit` records the attempt with score
+
+#### 6.3 ClozeQuestion Model
+- Fields: studyPackId, sentence, blanks (array with position, answer, hint), createdAt
+
+### 7. Audio Study Mode (`/audio-study`)
+
+#### 7.1 Audio Player
+- `AudioStudyPlayer` component uses the browser `SpeechSynthesis` API to read study pack content aloud
+- Playback controls: play, pause, stop, skip forward/backward between sections
+- Speed control (0.5x to 2x) and voice selection from available system voices
+- Progress indicator showing current position in the content
+
+#### 7.2 Content Sections
+- Reads summaries, topic descriptions, and flashcard content in sequence
+- Users can select which sections to include in the audio playback
+- Auto-advances through sections with configurable pauses between items
+
+### 8. AI Weekly Report (`/weekly-report`)
+
+#### 8.1 Report Generation
+- `POST /api/weekly-report/generate` aggregates the user's activity from the past 7 days (focus sessions, quiz attempts, flashcard reviews, essays, goals) and sends a comprehensive summary to Claude
+- Claude analyzes the data and generates a structured weekly report with:
+  - Study time summary and trends
+  - Strengths identified from quiz and essay performance
+  - Areas needing improvement
+  - Personalized recommendations for the coming week
+  - Motivational insights
+
+#### 8.2 Report Viewer
+- `WeeklyReportView` component displays the AI-generated report with formatted sections
+- `GET /api/weekly-report` retrieves past weekly reports for comparison
+- Historical reports allow tracking improvement over multiple weeks
+
+#### 8.3 WeeklyReport Model
+- Fields: userId, weekStartDate, weekEndDate, studyMinutes, quizzesTaken, averageScore, cardsReviewed, essaysWritten, goalsCompleted, aiAnalysis, recommendations, createdAt
+
+### 9. Knowledge Graph Enhancements
+
+#### 9.1 Improved Physics Simulation
+- Enhanced the force-directed layout with better repulsion forces between nodes for cleaner spacing
+- Added jitter and organic movement for more natural node positioning
+- Improved collision detection to prevent node overlap
+
+#### 9.2 Visual Enhancements
+- Nodes now feature orbital rings, breathing auras, pulsing cores, and energy flow dots for a visually striking appearance
+- Color-coded nodes by study pack for easy identification
+- Smoother animations and transitions during graph interaction
+
+### 10. Global Loading Skeleton
+
+#### 10.1 Loading State (`loading.tsx`)
+- Added a global `loading.tsx` in the `(main)` route group that provides instant visual feedback during page transitions
+- Skeleton UI with pulsing placeholders matching the typical page layout
+- Prevents layout shift by maintaining consistent dimensions during loading
+
+### 11. Navigation & Auth Updates
+
+#### 11.1 Sidebar Expansion
+- Expanded sidebar navigation from 13 to 19 items covering all 23 pages:
+  Dashboard, Upload, Study Packs, Documents, Focus Mode, Practice Essay, Exam Simulator, Audio Study, Cornell Notes, Goals, Calendar, Study Plan, Analytics, AI Tutor, Knowledge Graph, History, Weekly Report, Reminders, Profile
+
+#### 11.2 Command Palette Update
+- Added all 6 new pages to the command palette (Cmd+K) for quick navigation
+
+#### 11.3 Auth Config Update
+- Extended route protection to cover all new authenticated routes
+
+### 12. New Database Models
+
+Six new Mongoose models were added to support the expanded features:
+
+| Model | Fields | Purpose |
+|-------|--------|---------|
+| **ExamAttempt** | userId, studyPackId, questions, answers, score, totalQuestions, violations, timeLimit, timeTaken, completedAt | Proctored exam results |
+| **Reminder** | userId, title, message, type, read, actionUrl, createdAt | Smart study reminders |
+| **Notebook** | userId, title, content, cues, summary, createdAt, updatedAt | Cornell note-taking |
+| **Goal** | userId, title, description, targetValue, currentValue, unit, deadline, completed, createdAt | Goal setting and tracking |
+| **ClozeQuestion** | studyPackId, sentence, blanks, createdAt | Fill-in-the-blank questions |
+| **WeeklyReport** | userId, weekStartDate, weekEndDate, studyMinutes, quizzesTaken, averageScore, cardsReviewed, essaysWritten, goalsCompleted, aiAnalysis, recommendations, createdAt | AI weekly performance reports |
+
+### 13. New API Routes Summary
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/exams/generate` | POST | Generate AI exam from study pack |
+| `/api/exams/submit` | POST | Submit and score exam attempt |
+| `/api/reminders/generate` | POST | Generate AI study reminders |
+| `/api/reminders` | GET | List active reminders |
+| `/api/reminders/[id]` | PATCH | Dismiss/mark reminder as read |
+| `/api/notebooks` | GET/POST | List and create notebooks |
+| `/api/notebooks/[id]` | PATCH/DELETE | Update and delete notebooks |
+| `/api/goals` | GET/POST | List and create goals |
+| `/api/goals/[id]` | PATCH/DELETE | Update and delete goals |
+| `/api/goals/progress` | POST | AI goal suggestions |
+| `/api/cloze/submit` | POST | Submit cloze quiz attempt |
+| `/api/weekly-report/generate` | POST | Generate AI weekly report |
+| `/api/weekly-report` | GET | Retrieve past weekly reports |
+
+---
+
+## Remaining Work (Weeks 11-13)
+
+### Weeks 11-12: Testing & Refinement
+- Unit and integration testing for all 42 API routes
+- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → exam → matching game tab → fill-in-blank tab → analytics → weekly report)
 - Performance optimization (database query indexing, response payload optimization)
 - UI/UX refinements based on testing feedback and usability review
 
-### Weeks 11-12: Deployment & Documentation
+### Week 12: Deployment & Documentation
 - Deploy to Vercel with production environment configuration
 - Configure production MongoDB Atlas cluster with proper access controls
 - Set up environment variables (MONGODB_URI, NEXTAUTH_SECRET, ANTHROPIC_API_KEY)
@@ -759,113 +956,103 @@ StudySphere/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
-│   │   │   ├── login/page.tsx                  # Login page
-│   │   │   └── register/page.tsx               # Registration page
+│   │   │   ├── login/page.tsx
+│   │   │   └── register/page.tsx
 │   │   ├── (main)/
 │   │   │   ├── layout.tsx                      # Authenticated layout (Navbar + Sidebar)
-│   │   │   ├── dashboard/page.tsx              # Dashboard with stats, docs, weak areas
-│   │   │   ├── upload/page.tsx                 # Document upload (PDF + text paste)
-│   │   │   ├── profile/page.tsx                # Profile editing
-│   │   │   ├── study-packs/page.tsx            # Study packs grid listing
-│   │   │   ├── study-packs/[id]/page.tsx       # Study pack viewer (5 tabs)
-│   │   │   └── focus/page.tsx                  # Focus mode page
+│   │   │   ├── loading.tsx                     # Global loading skeleton
+│   │   │   ├── dashboard/page.tsx
+│   │   │   ├── upload/page.tsx
+│   │   │   ├── profile/page.tsx
+│   │   │   ├── study-packs/page.tsx
+│   │   │   ├── study-packs/[id]/page.tsx
+│   │   │   ├── focus/page.tsx
+│   │   │   ├── documents/page.tsx
+│   │   │   ├── documents/[id]/page.tsx
+│   │   │   ├── calendar/page.tsx
+│   │   │   ├── analytics/page.tsx
+│   │   │   ├── practice-essay/page.tsx
+│   │   │   ├── chat/page.tsx
+│   │   │   ├── study-plan/page.tsx
+│   │   │   ├── knowledge-graph/page.tsx
+│   │   │   ├── history/page.tsx
+│   │   │   ├── exam-simulator/page.tsx         # NEW: Proctored AI exam
+│   │   │   ├── audio-study/page.tsx            # NEW: Audio study mode
+│   │   │   ├── notebooks/page.tsx              # NEW: Cornell notes list
+│   │   │   ├── notebooks/[id]/page.tsx         # NEW: Cornell note editor
+│   │   │   ├── goals/page.tsx                  # NEW: Goal tracking
+│   │   │   └── weekly-report/page.tsx          # NEW: AI weekly report
 │   │   ├── api/
-│   │   │   ├── auth/
-│   │   │   │   ├── [...nextauth]/route.ts      # NextAuth handlers
-│   │   │   │   ├── register/route.ts           # POST registration
-│   │   │   │   └── profile/route.ts            # GET/PATCH profile
-│   │   │   ├── documents/
-│   │   │   │   ├── route.ts                    # GET document list
-│   │   │   │   ├── upload/route.ts             # POST upload (PDF + text)
-│   │   │   │   └── [id]/route.ts               # DELETE with cascade
-│   │   │   ├── study-packs/
-│   │   │   │   ├── route.ts                    # GET study pack list
-│   │   │   │   ├── generate/route.ts           # POST AI generation
-│   │   │   │   └── [id]/
-│   │   │   │       ├── route.ts                # GET study pack detail
-│   │   │   │       └── quiz/route.ts           # GET/POST quiz questions & submission
-│   │   │   ├── focus-sessions/
-│   │   │   │   ├── route.ts                    # GET/POST focus sessions
-│   │   │   │   └── [id]/route.ts               # PATCH complete session
-│   │   │   ├── weak-areas/
-│   │   │   │   ├── route.ts                    # GET weak areas
-│   │   │   │   └── analyze/route.ts            # POST analyze quiz attempt
-│   │   │   └── tutor/
-│   │   │       └── chat/route.ts               # POST AI tutor conversation
-│   │   ├── layout.tsx                          # Root layout (SessionProvider + Toaster)
-│   │   ├── globals.css                         # Global styles
-│   │   └── page.tsx                            # Public landing page
+│   │   │   ├── auth/ (3 routes)
+│   │   │   ├── documents/ (3 routes)
+│   │   │   ├── study-packs/ (4 routes)
+│   │   │   ├── focus-sessions/ (2 routes)
+│   │   │   ├── weak-areas/ (2 routes)
+│   │   │   ├── tutor/ (1 route)
+│   │   │   ├── flashcards/ (1 route)
+│   │   │   ├── essays/ (2 routes)
+│   │   │   ├── study-events/ (2 routes)
+│   │   │   ├── study-plan/ (1 route)
+│   │   │   ├── chat/ (4 routes)
+│   │   │   ├── annotations/ (2 routes)
+│   │   │   ├── analytics/ (2 routes)
+│   │   │   ├── history/ (1 route)
+│   │   │   ├── exams/ (2 routes)               # NEW
+│   │   │   ├── reminders/ (3 routes)           # NEW
+│   │   │   ├── notebooks/ (2 routes)           # NEW
+│   │   │   ├── goals/ (3 routes)               # NEW
+│   │   │   ├── cloze/ (1 route)               # NEW: submit only
+│   │   │   └── weekly-report/ (2 routes)       # NEW
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   └── page.tsx
 │   ├── components/
 │   │   ├── features/
-│   │   │   ├── auth/
-│   │   │   │   ├── LoginForm.tsx               # Login form (client)
-│   │   │   │   ├── RegisterForm.tsx            # Registration form (client)
-│   │   │   │   └── UserButton.tsx              # User menu button
-│   │   │   ├── dashboard/
-│   │   │   │   ├── DashboardStats.tsx          # Statistics cards (4 stats)
-│   │   │   │   └── RecentDocuments.tsx         # Document list with delete + generate (client)
-│   │   │   ├── study-packs/
-│   │   │   │   ├── StudyPackDetail.tsx         # Tabbed study pack viewer (client)
-│   │   │   │   ├── FlashcardViewer.tsx         # 3D flip flashcards with filters (client)
-│   │   │   │   └── GenerateButton.tsx          # Generate/view study pack button (client)
-│   │   │   ├── quiz/
-│   │   │   │   ├── QuizInterface.tsx           # Quiz taking interface (client)
-│   │   │   │   ├── QuizResults.tsx             # Score display + question review (client)
-│   │   │   │   └── WeakAreasList.tsx           # Weak areas with severity badges (client)
-│   │   │   ├── focus/
-│   │   │   │   └── FocusMode.tsx               # 3-phase focus session (client)
-│   │   │   ├── tutor/
-│   │   │   │   └── TutorChat.tsx               # AI tutor chat interface (client)
-│   │   │   ├── upload/
-│   │   │   │   ├── FileUploadZone.tsx          # Drag-drop PDF upload (client)
-│   │   │   │   └── TextPasteForm.tsx           # Text paste form (client)
-│   │   │   └── profile/
-│   │   │       └── ProfileForm.tsx             # Profile edit form (client)
-│   │   ├── layout/
-│   │   │   ├── Navbar.tsx                      # Top navigation bar
-│   │   │   └── Sidebar.tsx                     # Side navigation (client)
-│   │   ├── providers/
-│   │   │   └── SessionProvider.tsx             # NextAuth SessionProvider wrapper
-│   │   └── ui/                                 # shadcn/ui components
-│   │       ├── alert-dialog.tsx
-│   │       ├── avatar.tsx
-│   │       ├── badge.tsx
-│   │       ├── button.tsx
-│   │       ├── card.tsx
-│   │       ├── dialog.tsx
-│   │       ├── dropdown-menu.tsx
-│   │       ├── input.tsx
-│   │       ├── label.tsx
-│   │       ├── progress.tsx
-│   │       ├── separator.tsx
-│   │       ├── sonner.tsx
-│   │       ├── tabs.tsx
-│   │       └── textarea.tsx
+│   │   │   ├── auth/ (LoginForm, RegisterForm, UserButton)
+│   │   │   ├── dashboard/ (DashboardStats, RecentDocuments)
+│   │   │   ├── study-packs/ (StudyPackDetail, FlashcardViewer, GenerateButton)
+│   │   │   ├── quiz/ (QuizInterface, QuizResults, WeakAreasList)
+│   │   │   ├── focus/ (FocusMode)
+│   │   │   ├── tutor/ (TutorChat)
+│   │   │   ├── upload/ (FileUploadZone, TextPasteForm)
+│   │   │   ├── profile/ (ProfileForm)
+│   │   │   ├── mind-map/ (KnowledgeGraph)
+│   │   │   ├── command-palette/ (CommandPalette)
+│   │   │   ├── exam/ (ExamSimulator, ExamResults)          # NEW
+│   │   │   ├── reminders/ (NotificationBell, ReminderPanel) # NEW
+│   │   │   ├── notebooks/ (CornellEditor, NotebookList)    # NEW
+│   │   │   ├── goals/ (GoalTracker)                        # NEW
+│   │   │   ├── matching/ (MatchingTab)                     # NEW: tab in study pack detail
+│   │   │   ├── cloze/ (ClozeTab)                           # NEW: tab in study pack detail
+│   │   │   ├── audio/ (AudioStudyPlayer)                   # NEW
+│   │   │   └── reports/ (WeeklyReportView)                 # NEW
+│   │   ├── layout/ (Navbar, Sidebar)
+│   │   ├── providers/ (SessionProvider, ThemeProvider)
+│   │   └── ui/ (shadcn/ui components)
 │   ├── lib/
-│   │   ├── claude.ts                           # Anthropic SDK client (singleton)
-│   │   ├── db.ts                               # MongoDB connection (cached singleton)
-│   │   ├── pdf.ts                              # PDF text extraction
-│   │   ├── study-pack-generator.ts             # AI study pack generation logic
-│   │   ├── utils.ts                            # Utility functions (cn)
+│   │   ├── claude.ts
+│   │   ├── db.ts
+│   │   ├── pdf.ts
+│   │   ├── study-pack-generator.ts
+│   │   ├── utils.ts
 │   │   └── validations/
-│   │       ├── study-pack.ts                   # Study pack generation schema
-│   │       ├── quiz.ts                         # Quiz submission schema
-│   │       └── focus-session.ts                # Focus session + tutor chat schemas
-│   ├── models/
-│   │   ├── User.ts
-│   │   ├── Document.ts
-│   │   ├── StudyPack.ts
-│   │   ├── Topic.ts
-│   │   ├── Flashcard.ts
-│   │   ├── QuizQuestion.ts
-│   │   ├── QuizAttempt.ts
-│   │   ├── FocusSession.ts
-│   │   └── WeakArea.ts
-│   ├── auth.ts                                 # NextAuth config (Node.js runtime)
-│   ├── auth.config.ts                          # NextAuth config (edge-safe)
-│   └── middleware.ts                           # Route protection middleware
-├── next.config.ts                              # Next.js configuration
-├── components.json                             # shadcn/ui configuration
+│   │       ├── study-pack.ts, quiz.ts, focus-session.ts
+│   │       ├── exam.ts, cloze.ts                           # NEW
+│   │       ├── goal.ts, notebook.ts                        # NEW
+│   │       ├── reminder.ts, weekly-report.ts               # NEW
+│   ├── models/ (21 models total)
+│   │   ├── User, Document, StudyPack, Topic, Flashcard
+│   │   ├── QuizQuestion, QuizAttempt, FocusSession, WeakArea
+│   │   ├── EssayAttempt, StudyEvent, ChatThread, ChatMessage
+│   │   ├── Annotation, ReviewStats
+│   │   ├── ExamAttempt, Reminder                            # NEW
+│   │   ├── Notebook, Goal, ClozeQuestion, WeeklyReport      # NEW
+│   │   └── index.ts                                         # Barrel exports
+│   ├── auth.ts
+│   ├── auth.config.ts
+│   └── middleware.ts
+├── next.config.ts
+├── components.json
 ├── package.json
 ├── tsconfig.json
 └── tailwind.config.ts
@@ -877,9 +1064,9 @@ StudySphere/
 
 All Week 1-10 deliverables are **fully implemented and functional**. The application has:
 
-- **Complete authentication system** (Weeks 1-5) with registration, login, JWT sessions, profile management, and route protection for all 17 authenticated pages.
+- **Complete authentication system** (Weeks 1-5) with registration, login, JWT sessions, profile management, and route protection for all 23 authenticated pages.
 - **Document management** (Week 5) with PDF upload (drag-drop, text extraction), text paste, listing, cascade deletion, and a full document viewer with annotations.
-- **AI-powered study pack generation** (Week 6) using the Anthropic Claude API (`claude-sonnet-4-20250514`) to produce structured summaries, topics, flashcards, quiz questions, and mind maps from uploaded documents. Includes a study packs listing page and a 6-tab detail viewer (Summary, Mind Map, Topics, Flashcards, Quiz, AI Tutor).
+- **AI-powered study pack generation** (Week 6) using the Anthropic Claude API (`claude-sonnet-4-20250514`) to produce structured summaries, topics, flashcards, quiz questions, cloze questions, and mind maps from uploaded documents. Includes a study packs listing page and an 8-tab detail viewer (Summary, Mind Map, Topics, Flashcards, Quiz, Fill-in-Blank, Matching, AI Tutor).
 - **Interactive quiz system** (Week 7) with multiple-choice questions, score tracking, detailed answer review with explanations, and automatic weak area analysis after each attempt.
 - **Weak area detection** (Week 7) that analyzes quiz performance per topic, classifies severity (high/medium/low), and displays results on the dashboard with links to relevant study packs.
 - **Pomodoro focus mode** (Weeks 8-9) with work/short break/long break phases, SVG arc timer, auto-transitions, goal tracking, and session recaps.
@@ -889,8 +1076,17 @@ All Week 1-10 deliverables are **fully implemented and functional**. The applica
 - **Calendar with study events** (Week 9) featuring monthly view, CRUD operations, color-coded events, and completion tracking.
 - **AI study plan generator** (Week 9) that creates personalized study schedules from selected packs, intensity, and deadline, auto-populating the calendar.
 - **Analytics dashboard** (Week 9) with Recharts charts (study minutes, cards reviewed, quiz scores), streak tracking, and milestone progress.
-- **Mind maps and knowledge graph** (Week 9) with tree/flowchart SVG views per study pack and cross-pack topic visualization.
+- **Mind maps and knowledge graph** (Weeks 9-10) with tree/flowchart SVG views per study pack and enhanced cross-pack topic visualization with orbital rings, breathing auras, and organic physics.
 - **Dark/light theme, command palette (Cmd+K), and responsive sidebar** (Week 9) for a polished, professional UI.
 - **History page** (Week 9) with chronological activity log and expandable details for quizzes, essays, and focus sessions.
+- **AI Exam Simulator** (Week 10) with proctored mode (fullscreen enforcement, tab-switch warnings, auto-submit after 3 violations), timed exams, and detailed results.
+- **Smart Reminders** (Week 10) with AI-generated study alerts, notification bell in the Navbar, and browser push notifications.
+- **Cornell Notes** (Week 10) with TipTap rich text editor, cue/summary sections, and auto-save functionality.
+- **Goal Setting & Tracking** (Week 10) with progress bars, deadlines, completion tracking, and AI-powered goal suggestions.
+- **Matching Game** (Week 10) integrated as a tab in the study pack detail page, with drag-and-drop flashcard matching using @dnd-kit, timer, and scoring.
+- **Fill-in-the-Blank Quiz** (Week 10) auto-generated with study packs and integrated as a tab in the study pack detail page, with instant feedback and scoring.
+- **Audio Study Mode** (Week 10) with SpeechSynthesis playback controls, speed adjustment, voice selection, and section navigation.
+- **AI Weekly Report** (Week 10) with comprehensive performance analysis, trend identification, and personalized recommendations.
+- **Global loading skeleton** (Week 10) for instant page transition feedback across all routes.
 
-The application comprises **15 Mongoose models**, **17 pages**, and **29 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout.
+The application comprises **21 Mongoose models**, **23 pages**, and **42 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout.

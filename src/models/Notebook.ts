@@ -1,7 +1,7 @@
 import mongoose, { Schema, models } from "mongoose";
 
 const NotebookSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   studyPackId: { type: Schema.Types.ObjectId, ref: "StudyPack" },
   title: { type: String, required: true, default: "Untitled Notebook" },
   cues: { type: String, default: "" },

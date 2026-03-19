@@ -1,4 +1,8 @@
-import HistoryList from "@/components/features/history/HistoryList";
+import dynamic from "next/dynamic";
+const HistoryList = dynamic(
+  () => import("@/components/features/history/HistoryList"),
+  { loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted/40" /> }
+);
 
 export default function HistoryPage() {
   return (
