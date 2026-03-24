@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import { TAGS } from "@/lib/data-cache";
 
 export async function GET() {
   try {
@@ -50,6 +52,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({
       id: user._id,
       name: user.name,

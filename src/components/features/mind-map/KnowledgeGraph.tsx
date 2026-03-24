@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import DisplayCards from "@/components/ui/display-cards";
+import { Brain, BookOpen, Network } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -810,10 +812,44 @@ export default function KnowledgeGraph() {
 
   if (!loading && nodesRef.current.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-background p-12 text-center">
-        <p className="text-muted-foreground">
-          No study packs found. Generate some study packs to see your knowledge graph.
-        </p>
+      <div className="rounded-xl border border-border bg-background p-12 text-center flex flex-col items-center gap-8">
+        <div>
+          <p className="text-lg font-semibold text-foreground">No Knowledge Graph Yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Generate some study packs to see your topics visualized as a connected knowledge graph.
+          </p>
+        </div>
+        <DisplayCards
+          cards={[
+            {
+              icon: <Brain className="h-4 w-4" />,
+              title: "Topics",
+              description: "AI-extracted key concepts",
+              date: "From your documents",
+              iconClassName: "text-blue-400",
+              titleClassName: "text-blue-400",
+              className: "[grid-area:stack] hover:-translate-y-10 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-border before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-background/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
+            },
+            {
+              icon: <BookOpen className="h-4 w-4" />,
+              title: "Study Packs",
+              description: "Organized study materials",
+              date: "Upload &amp; generate",
+              iconClassName: "text-purple-400",
+              titleClassName: "text-purple-400",
+              className: "[grid-area:stack] translate-x-16 translate-y-10 hover:-translate-y-1 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-border before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-background/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
+            },
+            {
+              icon: <Network className="h-4 w-4" />,
+              title: "Connections",
+              description: "Cross-topic relationships",
+              date: "Auto-discovered",
+              iconClassName: "text-amber-400",
+              titleClassName: "text-amber-400",
+              className: "[grid-area:stack] translate-x-32 translate-y-20 hover:translate-y-10",
+            },
+          ]}
+        />
       </div>
     );
   }

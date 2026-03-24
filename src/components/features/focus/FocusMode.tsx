@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import ShimmerButton from "@/components/ui/shimmer-button";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import { GlowingStarsBackgroundCard } from "@/components/ui/glowing-stars-card";
+import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
+import CustomSelect from "@/components/ui/custom-select";
 
 interface StudyPackOption {
   _id: string;
@@ -444,14 +449,15 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
 
   if (phase === "setup") {
     return (
-      <div className="mx-auto max-w-2xl space-y-0">
+      <div className="relative mx-auto max-w-2xl space-y-0 overflow-hidden">
+        <AnimatedGridPattern className="absolute inset-0 opacity-[0.08] pointer-events-none" numSquares={20} duration={4} />
         {/* ── Header ────────────────────────────────────── */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex-1" />
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSettings}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors transition-all duration-200 hover:scale-105 active:scale-95 ${
                 showSettings
                   ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
                   : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
@@ -462,7 +468,7 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
             </button>
             <button
               onClick={toggleHistory}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors transition-all duration-200 hover:scale-105 active:scale-95 ${
                 showHistory
                   ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
                   : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
@@ -551,66 +557,38 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
               {/* Work */}
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Work</label>
-                <div className="relative">
-                  <select
-                    value={workDuration}
-                    onChange={(e) => setWorkDuration(Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-border bg-muted/50 px-3 py-2.5 pr-8 text-sm text-foreground outline-none focus:border-orange-500/50"
-                  >
-                    {[15, 20, 25, 30, 35, 40, 45, 50, 60, 90, 120].map((m) => (
-                      <option key={m} value={m}>{m} min</option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                <CustomSelect
+                  value={String(workDuration)}
+                  onValueChange={(val) => setWorkDuration(Number(val))}
+                  options={[15, 20, 25, 30, 35, 40, 45, 50, 60, 90, 120].map((m) => ({ value: String(m), label: `${m} min` }))}
+                />
               </div>
               {/* Short Break */}
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Short Break</label>
-                <div className="relative">
-                  <select
-                    value={shortBreakDuration}
-                    onChange={(e) => setShortBreakDuration(Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-border bg-muted/50 px-3 py-2.5 pr-8 text-sm text-foreground outline-none focus:border-orange-500/50"
-                  >
-                    {[3, 5, 10, 15].map((m) => (
-                      <option key={m} value={m}>{m} min</option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                <CustomSelect
+                  value={String(shortBreakDuration)}
+                  onValueChange={(val) => setShortBreakDuration(Number(val))}
+                  options={[3, 5, 10, 15].map((m) => ({ value: String(m), label: `${m} min` }))}
+                />
               </div>
               {/* Long Break */}
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Long Break</label>
-                <div className="relative">
-                  <select
-                    value={longBreakDuration}
-                    onChange={(e) => setLongBreakDuration(Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-border bg-muted/50 px-3 py-2.5 pr-8 text-sm text-foreground outline-none focus:border-orange-500/50"
-                  >
-                    {[10, 15, 20, 25, 30].map((m) => (
-                      <option key={m} value={m}>{m} min</option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                <CustomSelect
+                  value={String(longBreakDuration)}
+                  onValueChange={(val) => setLongBreakDuration(Number(val))}
+                  options={[10, 15, 20, 25, 30].map((m) => ({ value: String(m), label: `${m} min` }))}
+                />
               </div>
               {/* Rounds */}
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Rounds</label>
-                <div className="relative">
-                  <select
-                    value={rounds}
-                    onChange={(e) => setRounds(Number(e.target.value))}
-                    className="w-full appearance-none rounded-lg border border-border bg-muted/50 px-3 py-2.5 pr-8 text-sm text-foreground outline-none focus:border-orange-500/50"
-                  >
-                    {[2, 3, 4, 5, 6, 8].map((r) => (
-                      <option key={r} value={r}>{r} rounds</option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                <CustomSelect
+                  value={String(rounds)}
+                  onValueChange={(val) => setRounds(Number(val))}
+                  options={[2, 3, 4, 5, 6, 8].map((r) => ({ value: String(r), label: `${r} rounds` }))}
+                />
               </div>
             </div>
           </div>
@@ -626,19 +604,15 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
 
           {/* Study pack select */}
           <div className="mx-auto mt-6 max-w-sm">
-            <div className="relative">
-              <select
-                value={selectedPackId}
-                onChange={(e) => setSelectedPackId(e.target.value)}
-                className="w-full appearance-none rounded-lg border border-border bg-muted/50 px-4 py-3 pr-10 text-sm text-foreground outline-none focus:border-orange-500/50"
-              >
-                <option value="">Select study pack</option>
-                {studyPacks.map((sp) => (
-                  <option key={sp._id} value={sp._id}>{sp.title}</option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            </div>
+            <CustomSelect
+              value={selectedPackId}
+              onValueChange={setSelectedPackId}
+              options={[
+                { value: "", label: "Select study pack" },
+                ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+              ]}
+              placeholder="Select a study pack..."
+            />
           </div>
 
           {/* Duration preset cards */}
@@ -655,15 +629,11 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
           </div>
 
           {/* Start button */}
-          <div className="mx-auto mt-8 max-w-sm">
-            <button
-              onClick={startSession}
-              disabled={!selectedPackId || isSubmitting}
-              className="flex w-full items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-all hover:shadow-xl hover:shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          <div className="mx-auto mt-8 max-w-sm flex justify-center">
+            <ShimmerButton onClick={startSession} className="px-8 py-3 text-base font-semibold rounded-2xl min-w-[140px]">
               <PlayIcon className="h-4 w-4" />
               {isSubmitting ? "Starting..." : "Start Focus Session"}
-            </button>
+            </ShimmerButton>
           </div>
         </div>
       </div>
@@ -677,12 +647,7 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
 
     return (
       <div className="mx-auto max-w-2xl">
-        <div
-          className={`rounded-xl border border-border bg-card p-8 transition-all duration-300 ${
-            flashEffect ? "ring-2 ring-orange-400/50" : ""
-          }`}
-        >
-          {/* Phase progress dots */}
+            {/* Phase progress dots */}
           <div className="flex items-center justify-center gap-2">
             {Array.from({ length: rounds }).map((_, i) => {
               const isActive = i < sessionsCompleted % rounds ||
@@ -744,7 +709,6 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
           >
             End Session
           </button>
-        </div>
       </div>
     );
   }
@@ -753,14 +717,14 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="rounded-xl border border-border bg-card p-8">
+      <GlowingStarsBackgroundCard className="w-full max-w-none max-h-none h-auto">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/15">
             <svg className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-foreground">Session Complete</h2>
+          <SparklesText text="Session Complete!" className="text-2xl font-bold text-amber-400" />
           <p className="mt-1 text-sm text-muted-foreground">
             You completed {sessionsCompleted} pomodoro{sessionsCompleted !== 1 ? "s" : ""}
           </p>
@@ -803,7 +767,7 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
             onChange={(e) => setRecap(e.target.value)}
             placeholder="What did you accomplish? What do you want to focus on next?"
             rows={4}
-            className="w-full rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-orange-500/50"
+            className="w-full rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
           />
         </div>
 
@@ -814,7 +778,7 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
         >
           {isSubmitting ? "Saving..." : "Save & Finish"}
         </button>
-      </div>
+      </GlowingStarsBackgroundCard>
     </div>
   );
 }

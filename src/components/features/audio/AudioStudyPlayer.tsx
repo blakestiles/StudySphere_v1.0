@@ -11,6 +11,11 @@ import {
   VolumeX,
   Loader2,
 } from "lucide-react";
+import ShimmerButton from "@/components/ui/shimmer-button";
+import TextShimmer from "@/components/ui/text-shimmer";
+import BlurFade from "@/components/ui/blur-fade";
+import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
+import CustomSelect from "@/components/ui/custom-select";
 
 interface StudyPackOption {
   _id: string;
@@ -219,24 +224,21 @@ export default function AudioStudyPlayer({
             <label className="block text-sm font-medium text-foreground mb-1">
               Study Pack
             </label>
-            <select
+            <CustomSelect
               value={selectedPack}
-              onChange={(e) => setSelectedPack(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-            >
-              <option value="">Select a study pack...</option>
-              {studyPacks.map((sp) => (
-                <option key={sp._id} value={sp._id}>
-                  {sp.title}
-                </option>
-              ))}
-            </select>
+              onValueChange={setSelectedPack}
+              options={[
+                { value: "", label: "Select a study pack..." },
+                ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+              ]}
+              placeholder="Select a study pack..."
+            />
           </div>
 
           <button
             onClick={loadPack}
             disabled={!selectedPack}
-            className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/25 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100"
           >
             <Volume2 className="h-4 w-4" />
             Load Study Material
@@ -262,9 +264,11 @@ export default function AudioStudyPlayer({
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="relative max-w-2xl mx-auto space-y-4">
+      <AnimatedGridPattern className="absolute inset-0 opacity-[0.06] pointer-events-none" numSquares={15} />
+
       {/* Segment info */}
-      <div className="bg-card border border-border rounded-xl p-5">
+      <div className="h-full p-5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-muted-foreground">
             Segment {currentIndex + 1} of {segments.length}
@@ -281,8 +285,8 @@ export default function AudioStudyPlayer({
           </button>
         </div>
 
-        <h2 className="text-lg font-semibold text-foreground mb-3">
-          {current.title}
+        <h2 className="mb-3">
+          <TextShimmer className="text-xl font-bold text-white">{current.title}</TextShimmer>
         </h2>
 
         {/* Progress bar */}
@@ -301,31 +305,29 @@ export default function AudioStudyPlayer({
 
       {/* Controls */}
       <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <BlurFade delay={0.2}>
         {/* Play controls */}
         <div className="flex items-center justify-center gap-4">
           <button
             onClick={prevSegment}
             disabled={currentIndex === 0}
-            className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 text-foreground transition-colors"
+            className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 text-foreground transition-colors hover:scale-110 active:scale-90 transition-transform duration-150"
           >
             <SkipBack className="h-5 w-5" />
           </button>
 
-          <button
-            onClick={togglePlay}
-            className="h-14 w-14 rounded-full bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center transition-colors"
-          >
+          <ShimmerButton onClick={togglePlay} className="w-16 h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform duration-150 hover:shadow-md hover:shadow-orange-500/20">
             {isPlaying ? (
               <Pause className="h-6 w-6" />
             ) : (
               <Play className="h-6 w-6 ml-0.5" />
             )}
-          </button>
+          </ShimmerButton>
 
           <button
             onClick={nextSegment}
             disabled={currentIndex === segments.length - 1}
-            className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 text-foreground transition-colors"
+            className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 text-foreground transition-colors hover:scale-110 active:scale-90 transition-transform duration-150"
           >
             <SkipForward className="h-5 w-5" />
           </button>
@@ -359,17 +361,12 @@ export default function AudioStudyPlayer({
             <label className="block text-xs text-muted-foreground mb-1.5">
               Voice
             </label>
-            <select
+            <CustomSelect
               value={selectedVoiceURI}
-              onChange={(e) => setSelectedVoiceURI(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
-            >
-              {voices.map((v) => (
-                <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name} ({v.lang})
-                </option>
-              ))}
-            </select>
+              onValueChange={setSelectedVoiceURI}
+              options={voices.map((v) => ({ value: v.voiceURI, label: `${v.name} (${v.lang})` }))}
+              placeholder="Default voice"
+            />
           </div>
         )}
 
@@ -402,6 +399,7 @@ export default function AudioStudyPlayer({
             ))}
           </div>
         </div>
+        </BlurFade>
       </div>
     </div>
   );

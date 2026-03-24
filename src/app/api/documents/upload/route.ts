@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Document from "@/models/Document";
 import { extractTextFromPDF } from "@/lib/pdf";
+import { TAGS } from "@/lib/data-cache";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -52,6 +54,8 @@ export async function POST(request: Request) {
         status: "ready",
       });
 
+      revalidateTag(TAGS.documents(session.user.id));
+      revalidateTag(TAGS.dashboard(session.user.id));
       return NextResponse.json(
         { message: "Document uploaded successfully", document: doc },
         { status: 201 }
@@ -76,6 +80,8 @@ export async function POST(request: Request) {
         status: "ready",
       });
 
+      revalidateTag(TAGS.documents(session.user.id));
+      revalidateTag(TAGS.dashboard(session.user.id));
       return NextResponse.json(
         { message: "Document created successfully", document: doc },
         { status: 201 }

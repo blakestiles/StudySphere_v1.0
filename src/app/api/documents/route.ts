@@ -13,7 +13,8 @@ export async function GET() {
     await connectDB();
     const documents = await Document.find({ userId: session.user.id })
       .sort({ uploadedAt: -1 })
-      .select("-rawText");
+      .select("-rawText")
+      .lean();
 
     return NextResponse.json(documents);
   } catch (error) {

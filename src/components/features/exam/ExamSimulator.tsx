@@ -3,6 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import ExamResults from "./ExamResults";
+import ShimmerButton from "@/components/ui/shimmer-button";
+import BlurFade from "@/components/ui/blur-fade";
+import Meteors from "@/components/ui/meteors";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import { GlowingStarsBackgroundCard } from "@/components/ui/glowing-stars-card";
+import CustomSelect from "@/components/ui/custom-select";
 
 interface StudyPackOption {
   _id: string;
@@ -322,25 +328,21 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
   // ── SETUP PHASE ──
   if (phase === "setup") {
     return (
-      <div className="max-w-2xl space-y-6">
+      <div className="relative overflow-hidden max-w-2xl space-y-6">
+        <Meteors count={8} className="opacity-30" />
+        <div className="space-y-6 p-2">
         {/* Study Pack */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Study Pack</label>
-          <div className="relative">
-            <select
-              value={selectedPackId}
-              onChange={(e) => setSelectedPackId(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground pr-8 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option value="">Select a study pack...</option>
-              {studyPacks.map((sp) => (
-                <option key={sp._id} value={sp._id}>
-                  {sp.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="absolute right-2 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
-          </div>
+          <CustomSelect
+            value={selectedPackId}
+            onValueChange={setSelectedPackId}
+            options={[
+              { value: "", label: "Select a study pack..." },
+              ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+            ]}
+            placeholder="Select a study pack..."
+          />
         </div>
 
         {/* Difficulty */}
@@ -426,23 +428,25 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
         </div>
 
         {/* Generate Button */}
-        <button
-          onClick={handleGenerate}
-          disabled={!selectedPackId || isGenerating}
-          className="w-full py-3 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium text-sm hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Generating Exam...
-            </>
-          ) : (
-            <>
-              <PlayIcon className="h-4 w-4" />
-              Generate Exam
-            </>
-          )}
-        </button>
+        <div className="flex justify-center">
+          <ShimmerButton
+            onClick={(!selectedPackId || isGenerating) ? undefined : handleGenerate}
+            className={`px-8 py-3 text-base font-semibold rounded-2xl ${(!selectedPackId || isGenerating) ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {isGenerating ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Generating Exam...
+              </>
+            ) : (
+              <>
+                <PlayIcon className="h-4 w-4" />
+                Start Exam
+              </>
+            )}
+          </ShimmerButton>
+        </div>
+        </div>
       </div>
     );
   }
@@ -490,35 +494,39 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
         </div>
 
         {/* Current Question */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-muted-foreground capitalize">
-              {currentQuestion.difficulty}
-            </span>
-          </div>
-          <p className="text-foreground font-medium mb-4">
-            {currentIndex + 1}. {currentQuestion.questionText}
-          </p>
-
-          <div className="space-y-2">
-            {currentQuestion.options.map((option, j) => (
-              <button
-                key={j}
-                onClick={() => handleSelectAnswer(j)}
-                className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
-                  answers[currentIndex] === j
-                    ? "border-orange-500 bg-orange-500/10 text-foreground"
-                    : "border-border text-foreground hover:bg-muted"
-                }`}
-              >
-                <span className="font-medium mr-2">
-                  {String.fromCharCode(65 + j)}.
+        <BlurFade key={currentIndex}>
+          <div className="h-full">
+            <div className="p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-muted-foreground capitalize">
+                  {currentQuestion.difficulty}
                 </span>
-                {option}
-              </button>
-            ))}
+              </div>
+              <p className="text-foreground font-medium mb-4">
+                {currentIndex + 1}. {currentQuestion.questionText}
+              </p>
+
+              <div className="space-y-2">
+                {currentQuestion.options.map((option, j) => (
+                  <button
+                    key={j}
+                    onClick={() => handleSelectAnswer(j)}
+                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
+                      answers[currentIndex] === j
+                        ? "border-orange-500 bg-orange-500/10 text-foreground"
+                        : "border-border text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span className="font-medium mr-2">
+                      {String.fromCharCode(65 + j)}.
+                    </span>
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        </BlurFade>
 
         {/* Navigation */}
         <div className="flex gap-3">

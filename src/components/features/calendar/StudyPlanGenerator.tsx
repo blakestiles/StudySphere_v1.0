@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import CustomSelect from "@/components/ui/custom-select";
+import DatePicker from "@/components/ui/date-picker";
 
 interface StudyPackOption {
   _id: string;
@@ -193,12 +195,11 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
             <CalendarIcon className="h-4 w-4 text-orange-400" />
             <span className="text-sm font-medium text-foreground">Exam Date *</span>
           </div>
-          <input
-            type="date"
+          <DatePicker
             value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
+            onChange={setTargetDate}
             min={new Date().toISOString().split("T")[0]}
-            className="w-full rounded-lg border border-border bg-muted/60 px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-orange-500/50 dark:[color-scheme:dark]"
+            placeholder="Select exam date..."
           />
         </div>
 
@@ -207,15 +208,11 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
             <ClockIcon className="h-4 w-4 text-orange-400" />
             <span className="text-sm font-medium text-foreground">Daily Study Time</span>
           </div>
-          <select
+          <CustomSelect
             value={dailyTime}
-            onChange={(e) => setDailyTime(e.target.value)}
-            className="w-full rounded-lg border border-border bg-muted/60 px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-orange-500/50 dark:[color-scheme:dark]"
-          >
-            {DAILY_TIME_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onValueChange={setDailyTime}
+            options={DAILY_TIME_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          />
         </div>
       </div>
 

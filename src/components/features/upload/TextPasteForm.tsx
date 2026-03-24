@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-
 export default function TextPasteForm() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -76,13 +75,17 @@ export default function TextPasteForm() {
               rows={12}
               required
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {content.length} characters
             </p>
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Saving..." : "Save Document"}
-          </Button>
+          <AnimatedGenerateButton
+            type="submit"
+            isLoading={loading}
+            idleLabel="Save Document"
+            loadingLabel="Saving..."
+            className="w-full"
+          />
         </form>
       </CardContent>
     </Card>

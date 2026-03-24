@@ -1,8 +1,7 @@
-export const dynamic = "force-dynamic";
 
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import lazyLoad from "next/dynamic";
+import BlurFade from "@/components/ui/blur-fade";
+import TextShimmer from "@/components/ui/text-shimmer";
 
 const KnowledgeGraph = lazyLoad(
   () => import("@/components/features/mind-map/KnowledgeGraph"),
@@ -12,18 +11,14 @@ const KnowledgeGraph = lazyLoad(
 );
 
 export default async function KnowledgeGraphPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   return (
-    <div className="space-y-3">
-      <div>
-        <h1 className="text-2xl font-bold">Knowledge Graph</h1>
-        <p className="text-sm text-muted-foreground">
-          Visualize connections between topics across all your study packs. Search, filter, and explore relationships.
-        </p>
+    <BlurFade delay={0.1} duration={0.4}>
+      <div className="space-y-3">
+        <div>
+          <TextShimmer className="text-2xl font-bold">Knowledge Graph</TextShimmer>
+        </div>
+        <KnowledgeGraph />
       </div>
-      <KnowledgeGraph />
-    </div>
+    </BlurFade>
   );
 }

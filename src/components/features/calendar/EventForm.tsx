@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import CustomSelect from "@/components/ui/custom-select";
+import DatePicker from "@/components/ui/date-picker";
+import TimePicker from "@/components/ui/time-picker";
 
 interface StudyPackOption {
   _id: string;
@@ -58,7 +61,7 @@ export default function EventForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          date: new Date(date).toISOString(),
+          date: new Date(date + "T12:00:00").toISOString(),
           startTime,
           duration,
           color,
@@ -93,22 +96,18 @@ export default function EventForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="event-date">Date</Label>
-          <Input
-            id="event-date"
-            type="date"
+          <Label>Date</Label>
+          <DatePicker
             value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
+            onChange={setDate}
+            placeholder="Select date..."
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="event-time">Start Time</Label>
-          <Input
-            id="event-time"
-            type="time"
+          <Label>Start Time</Label>
+          <TimePicker
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
+            onChange={setStartTime}
           />
         </div>
       </div>
@@ -121,11 +120,11 @@ export default function EventForm({
               key={preset}
               type="button"
               onClick={() => setDuration(preset)}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={
                 duration === preset
-                  ? "border-orange-500 bg-orange-500/20 text-orange-400"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              }`}
+                  ? "rounded-xl border border-orange-500/50 bg-orange-500/15 px-3 py-1.5 text-xs font-medium text-orange-400 transition-all duration-150 shadow-sm shadow-orange-500/20"
+                  : "rounded-xl border border-white/10 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-150 hover:bg-white/5 hover:border-white/20 hover:text-foreground"
+              }
             >
               {preset} min
             </button>
@@ -157,19 +156,15 @@ export default function EventForm({
       {studyPacks.length > 0 && (
         <div className="space-y-2">
           <Label htmlFor="event-pack">Study Pack (optional)</Label>
-          <select
-            id="event-pack"
+          <CustomSelect
             value={studyPackId}
-            onChange={(e) => setStudyPackId(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-          >
-            <option value="">None</option>
-            {studyPacks.map((sp) => (
-              <option key={sp._id} value={sp._id}>
-                {sp.title}
-              </option>
-            ))}
-          </select>
+            onValueChange={setStudyPackId}
+            options={[
+              { value: "", label: "None" },
+              ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+            ]}
+            placeholder="Link to study pack..."
+          />
         </div>
       )}
 
@@ -188,14 +183,14 @@ export default function EventForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-white/5 hover:text-foreground hover:border-white/20 active:scale-[0.98]"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+          className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
         >
           {saving ? "Saving..." : "Create Session"}
         </button>

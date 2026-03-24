@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import EssayResults from "./EssayResults";
+import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
+import BlurFade from "@/components/ui/blur-fade";
+import TextShimmer from "@/components/ui/text-shimmer";
+import CustomSelect from "@/components/ui/custom-select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface StudyPackOption {
   _id: string;
@@ -98,30 +104,33 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
 
   if (results) {
     return (
-      <EssayResults
-        scores={results.scores}
-        feedback={results.feedback}
-        wordCount={results.wordCount}
-        onWriteAnother={handleWriteAnother}
-      />
+      <BlurFade>
+        <EssayResults
+          scores={results.scores}
+          feedback={results.feedback}
+          wordCount={results.wordCount}
+          onWriteAnother={handleWriteAnother}
+        />
+      </BlurFade>
     );
   }
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       {/* ── Left: Form ────────────────────────────────── */}
-      <div className="flex-1 min-w-0 space-y-5">
+      <div className="flex-1 min-w-0 h-full">
+        <div className="space-y-5 p-2">
         {/* Question / Prompt */}
         <div>
           <label className="mb-2 block text-sm font-medium text-foreground">
             Question / Prompt
           </label>
-          <input
+          <Input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Enter the question you want to answer, e.g., 'Explain the process of photosynthesis and its importance...'"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-orange-500 focus:outline-none"
+            className="w-full"
           />
         </div>
 
@@ -130,21 +139,16 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
           <label className="mb-2 block text-sm font-medium text-foreground">
             Reference Material (optional)
           </label>
-          <div className="relative">
-            <select
-              value={selectedPackId}
-              onChange={(e) => setSelectedPackId(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-border bg-card px-4 py-3 pr-10 text-sm text-foreground focus:border-orange-500 focus:outline-none"
-            >
-              <option value="">Select study pack for context</option>
-              {studyPacks.map((pack) => (
-                <option key={pack._id} value={pack._id}>
-                  {pack.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
+          <CustomSelect
+            value={selectedPackId}
+            onValueChange={setSelectedPackId}
+            options={[
+              { value: "", label: "Select study pack for context" },
+              ...studyPacks.map((pack) => ({ value: pack._id, label: pack.title })),
+            ]}
+            placeholder="Select reference material..."
+            disabled={isSubmitting}
+          />
         </div>
 
         {/* Your Answer */}
@@ -155,12 +159,12 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
             </label>
             <span className="text-xs text-muted-foreground">{wordCount} words</span>
           </div>
-          <textarea
+          <Textarea
             value={essayText}
             onChange={(e) => setEssayText(e.target.value)}
             placeholder="Write your answer here..."
             rows={14}
-            className="w-full resize-y rounded-xl border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-orange-500 focus:outline-none"
+            className="resize-none w-full"
           />
           {charCount > 0 && charCount < 50 && (
             <p className="mt-1.5 text-xs text-red-400">
@@ -170,23 +174,15 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
         </div>
 
         {/* Submit Button */}
-        <button
+        <AnimatedGenerateButton
+          isLoading={isSubmitting}
+          idleLabel="Submit for AI Grading"
+          loadingLabel="Grading your essay..."
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Grading...
-            </>
-          ) : (
-            <>
-              <SparklesIcon className="h-4 w-4" />
-              Submit for Grading
-            </>
-          )}
-        </button>
+          className="w-full py-3"
+        />
+        </div>
       </div>
 
       {/* ── Right: Instruction Panel ──────────────────── */}
@@ -195,9 +191,9 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
           <div className="mb-4 rounded-xl border border-border bg-muted/50 p-4">
             <PenIcon className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium text-muted-foreground">
+          <TextShimmer className="text-sm font-medium" duration={2}>
             Write your answer and submit to receive AI-powered feedback
-          </p>
+          </TextShimmer>
           <div className="mt-6 space-y-2 text-left">
             <p className="text-xs text-muted-foreground">
               <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />

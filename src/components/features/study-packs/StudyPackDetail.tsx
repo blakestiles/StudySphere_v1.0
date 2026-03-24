@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import {
+  BookOpen,
+  Network,
+  List,
+  Layers,
+  ClipboardList,
+  PenLine,
+  Shuffle,
+} from "lucide-react";
 
 function TabSkeleton() {
   return (
@@ -98,17 +108,6 @@ function getDepthColor(index: number) {
   return DEPTH_COLORS[index % DEPTH_COLORS.length];
 }
 
-// ── Tab definitions ────────────────────────────────────
-
-type TabKey = "summary" | "mindmap" | "topics" | "flashcards" | "quiz" | "fillinblank" | "matching";
-
-interface TabDef {
-  key: TabKey;
-  label: string;
-  icon: React.ReactNode;
-  count?: number;
-}
-
 // ── SVG Icons ──────────────────────────────────────────
 
 function ClipboardIcon() {
@@ -138,14 +137,6 @@ function LayersIcon() {
   );
 }
 
-function CardsIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <rect x="2" y="6" width="16" height="14" rx="2" />
-      <path strokeLinecap="round" d="M6 2h12a2 2 0 012 2v2" />
-    </svg>
-  );
-}
 
 function CheckCircleIcon() {
   return (
@@ -179,7 +170,7 @@ function FileTextIcon() {
   );
 }
 
-function BookOpenIcon() {
+function BookOpenSVG() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -254,18 +245,7 @@ export default function StudyPackDetail({
   quizQuestions,
   clozeQuestions,
 }: StudyPackDetailProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>("summary");
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
-
-  const tabs: TabDef[] = [
-    { key: "summary", label: "Summary", icon: <ClipboardIcon /> },
-    { key: "mindmap", label: "Mind Map", icon: <NetworkIcon /> },
-    { key: "topics", label: "Topics", icon: <LayersIcon />, count: topics.length },
-    { key: "flashcards", label: "Flashcards", icon: <CardsIcon />, count: flashcards.length },
-    { key: "quiz", label: "Quiz", icon: <CheckCircleIcon />, count: quizQuestions.length },
-    { key: "fillinblank", label: "Fill in Blank", icon: <TextCursorIcon />, count: clozeQuestions.length },
-    { key: "matching", label: "Matching", icon: <PuzzleIcon />, count: flashcards.length },
-  ];
 
   // ── Generating state ───────────────────────────────
 
@@ -360,98 +340,70 @@ export default function StudyPackDetail({
         </div>
       </div>
 
-      {/* ── Tab Bar ─────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-muted/50 p-1.5">
-        <div className="flex gap-1 overflow-x-auto">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-orange-500 text-white shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span
-                    className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
+      {/* ── Animated Tabs ───────────────────────────── */}
+      <AnimatedTabs
+        className="w-full"
+        tabs={[
+          {
+            id: "summary",
+            label: "Summary",
+            icon: BookOpen,
+            content: (
+              <div className="space-y-4">
+                {studyPack.summaries.short && (
+                  <div className="rounded-xl border border-border bg-card p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
+                        <span className="text-orange-500">
+                          <FileTextIcon />
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold text-foreground mb-2">Overview</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          {studyPack.summaries.short}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* ── Tab Content ─────────────────────────────── */}
-      <div>
-        {/* Summary Tab */}
-        {activeTab === "summary" && (
-          <div className="space-y-4">
-            {studyPack.summaries.short && (
-              <div className="rounded-xl border border-border bg-card p-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
-                    <span className="text-orange-500">
-                      <FileTextIcon />
-                    </span>
+                {studyPack.summaries.detailed && (
+                  <div className="rounded-xl border border-border bg-card p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                        <span className="text-blue-500">
+                          <BookOpenSVG />
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold text-foreground mb-2">Detailed Summary</h3>
+                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                          {studyPack.summaries.detailed}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-semibold text-foreground mb-2">Overview</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {studyPack.summaries.short}
+                )}
+
+                {!studyPack.summaries.short && !studyPack.summaries.detailed && (
+                  <div className="rounded-xl border border-border bg-card py-16 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <ClipboardIcon />
+                    </div>
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      No summaries available yet.
                     </p>
                   </div>
-                </div>
+                )}
               </div>
-            )}
-
-            {studyPack.summaries.detailed && (
-              <div className="rounded-xl border border-border bg-card p-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
-                    <span className="text-blue-500">
-                      <BookOpenIcon />
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-semibold text-foreground mb-2">Detailed Summary</h3>
-                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                      {studyPack.summaries.detailed}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!studyPack.summaries.short && !studyPack.summaries.detailed && (
-              <div className="rounded-xl border border-border bg-card py-16 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                  <ClipboardIcon />
-                </div>
-                <p className="mt-4 text-sm text-muted-foreground">
-                  No summaries available yet.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Mind Map Tab */}
-        {activeTab === "mindmap" && (
-          <>
-            {studyPack.mindMap ? (
+            ),
+          },
+          {
+            id: "mindmap",
+            label: "Mind Map",
+            icon: Network,
+            content: studyPack.mindMap ? (
               <MindMapView mindMap={studyPack.mindMap} title={studyPack.title} />
             ) : (
               <div className="rounded-xl border border-border bg-card py-16 text-center">
@@ -462,14 +414,13 @@ export default function StudyPackDetail({
                   No mind map available. Regenerate the study pack to create one.
                 </p>
               </div>
-            )}
-          </>
-        )}
-
-        {/* Topics Tab */}
-        {activeTab === "topics" && (
-          <>
-            {sortedTopics.length === 0 ? (
+            ),
+          },
+          {
+            id: "topics",
+            label: "Topics",
+            icon: List,
+            content: sortedTopics.length === 0 ? (
               <div className="rounded-xl border border-border bg-card py-16 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                   <LayersIcon />
@@ -484,19 +435,19 @@ export default function StudyPackDetail({
                   <TopicItem key={topic._id} topic={topic} index={index} />
                 ))}
               </div>
-            )}
-          </>
-        )}
-
-        {/* Flashcards Tab */}
-        {activeTab === "flashcards" && (
-          <FlashcardViewer flashcards={flashcards} />
-        )}
-
-        {/* Quiz Tab */}
-        {activeTab === "quiz" && (
-          <>
-            {quizQuestions.length === 0 ? (
+            ),
+          },
+          {
+            id: "flashcards",
+            label: "Flashcards",
+            icon: Layers,
+            content: <FlashcardViewer flashcards={flashcards} />,
+          },
+          {
+            id: "quiz",
+            label: "Quiz",
+            icon: ClipboardList,
+            content: quizQuestions.length === 0 ? (
               <div className="rounded-xl border border-border bg-card py-16 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                   <CheckCircleIcon />
@@ -506,18 +457,14 @@ export default function StudyPackDetail({
                 </p>
               </div>
             ) : (
-              <QuizInterface
-                questions={quizQuestions}
-                studyPackId={studyPack._id}
-              />
-            )}
-          </>
-        )}
-
-        {/* Fill-in-Blank Tab */}
-        {activeTab === "fillinblank" && (
-          <>
-            {clozeQuestions.length === 0 ? (
+              <QuizInterface questions={quizQuestions} studyPackId={studyPack._id} />
+            ),
+          },
+          {
+            id: "fillinblank",
+            label: "Fill in Blank",
+            icon: PenLine,
+            content: clozeQuestions.length === 0 ? (
               <div className="rounded-xl border border-border bg-card py-16 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                   <TextCursorIcon />
@@ -531,14 +478,13 @@ export default function StudyPackDetail({
               </div>
             ) : (
               <ClozeTab questions={clozeQuestions} />
-            )}
-          </>
-        )}
-
-        {/* Matching Tab */}
-        {activeTab === "matching" && (
-          <>
-            {flashcards.length < 2 ? (
+            ),
+          },
+          {
+            id: "matching",
+            label: "Matching",
+            icon: Shuffle,
+            content: flashcards.length < 2 ? (
               <div className="rounded-xl border border-border bg-card py-16 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                   <PuzzleIcon />
@@ -552,10 +498,10 @@ export default function StudyPackDetail({
               </div>
             ) : (
               <MatchingTab flashcards={flashcards} />
-            )}
-          </>
-        )}
-      </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

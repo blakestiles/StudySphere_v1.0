@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/auth-cache";
 import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import Document from "@/models/Document";
@@ -14,10 +14,7 @@ export default async function DocumentDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
+  const session = await requireSession();
 
   const { id } = await params;
 

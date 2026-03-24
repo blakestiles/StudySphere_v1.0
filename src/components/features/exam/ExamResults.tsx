@@ -9,6 +9,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import { GlowingStarsBackgroundCard } from "@/components/ui/glowing-stars-card";
 
 interface Question {
   questionText: string;
@@ -95,31 +97,47 @@ export default function ExamResults({
   return (
     <div className="space-y-6">
       {/* Score Card */}
-      <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <div className="text-5xl font-bold mb-2">
-          <span
-            className={
-              percentage >= 70
-                ? "text-green-500"
-                : percentage >= 50
-                ? "text-yellow-500"
-                : "text-red-500"
-            }
-          >
-            {percentage}%
-          </span>
-        </div>
-        <p className="text-muted-foreground text-lg">
-          {score} / {totalQuestions} correct
-        </p>
-        <div className="flex items-center justify-center gap-6 mt-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <ClockIcon className="h-4 w-4" />
-            {formatTime(timeTaken)} / {formatTime(duration * 60)}
-          </span>
-          <span>Avg {avgTimePerQuestion}s per question</span>
-        </div>
-      </div>
+      {percentage >= 70 ? (
+        <GlowingStarsBackgroundCard className="p-6 w-full text-center">
+          <div className="text-5xl font-bold mb-2 flex justify-center">
+            <SparklesText text={`${percentage}%`} className="text-5xl font-bold text-amber-400" />
+          </div>
+          <p className="text-muted-foreground text-lg">
+            {score} / {totalQuestions} correct
+          </p>
+          <div className="flex items-center justify-center gap-6 mt-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <ClockIcon className="h-4 w-4" />
+              {formatTime(timeTaken)} / {formatTime(duration * 60)}
+            </span>
+            <span>Avg {avgTimePerQuestion}s per question</span>
+          </div>
+        </GlowingStarsBackgroundCard>
+      ) : (
+          <div className="p-6 text-center">
+            <div className="text-5xl font-bold mb-2">
+              <span
+                className={
+                  percentage >= 50
+                    ? "text-yellow-500"
+                    : "text-red-500"
+                }
+              >
+                {percentage}%
+              </span>
+            </div>
+            <p className="text-muted-foreground text-lg">
+              {score} / {totalQuestions} correct
+            </p>
+            <div className="flex items-center justify-center gap-6 mt-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <ClockIcon className="h-4 w-4" />
+                {formatTime(timeTaken)} / {formatTime(duration * 60)}
+              </span>
+              <span>Avg {avgTimePerQuestion}s per question</span>
+            </div>
+          </div>
+      )}
 
       {/* Time Per Question Chart */}
       <div className="rounded-xl border border-border bg-card p-4">

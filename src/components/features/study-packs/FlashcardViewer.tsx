@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-
 interface Flashcard {
   _id: string;
   question: string;
@@ -247,51 +246,49 @@ export default function FlashcardViewer({ flashcards: initialFlashcards }: Flash
       </div>
 
       {/* Flashcard with 3D Flip */}
-      <div
-        className="cursor-pointer"
-        style={{ perspective: "1000px" }}
-        onClick={() => { setIsFlipped(!isFlipped); stopSpeaking(); }}
-      >
-        <div
-          className="relative w-full transition-transform duration-500"
-          style={{
-            transformStyle: "preserve-3d",
-            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-          }}
-        >
-          {/* Front - Question */}
+      <div className="cursor-pointer rounded-2xl" onClick={() => { setIsFlipped(!isFlipped); stopSpeaking(); }}>
+        <div style={{ perspective: "1000px" }}>
           <div
-            className="w-full min-h-[250px] rounded-2xl border border-border bg-card p-8 flex flex-col items-center justify-center text-center shadow-sm"
-            style={{ backfaceVisibility: "hidden" }}
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-              Question
-            </span>
-            <p className="text-lg font-medium text-foreground leading-relaxed max-w-lg">
-              {card.question}
-            </p>
-            <span className="text-xs text-muted-foreground mt-6 opacity-60">
-              Click to reveal
-            </span>
-          </div>
-
-          {/* Back - Answer */}
-          <div
-            className="absolute inset-0 w-full min-h-[250px] rounded-2xl border border-border bg-card p-8 flex flex-col items-center justify-center text-center shadow-sm"
+            className="relative w-full transition-transform duration-500"
             style={{
-              backfaceVisibility: "hidden",
-              transform: "rotateY(180deg)",
+              transformStyle: "preserve-3d",
+              transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
             }}
           >
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-              Answer
-            </span>
-            <p className="text-lg text-foreground leading-relaxed max-w-lg">
-              {card.answer}
-            </p>
-            <span className="text-xs text-muted-foreground mt-6 opacity-60">
-              Click to flip back
-            </span>
+            {/* Front - Question */}
+            <div
+              className="w-full min-h-[250px] rounded-2xl p-8 flex flex-col items-center justify-center text-center"
+              style={{ backfaceVisibility: "hidden" }}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+                Question
+              </span>
+              <p className="text-lg font-medium text-foreground leading-relaxed max-w-lg">
+                {card.question}
+              </p>
+              <span className="text-xs text-muted-foreground mt-6 opacity-60">
+                Click to reveal
+              </span>
+            </div>
+
+            {/* Back - Answer */}
+            <div
+              className="absolute inset-0 w-full min-h-[250px] rounded-2xl p-8 flex flex-col items-center justify-center text-center"
+              style={{
+                backfaceVisibility: "hidden",
+                transform: "rotateY(180deg)",
+              }}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+                Answer
+              </span>
+              <p className="text-lg text-foreground leading-relaxed max-w-lg">
+                {card.answer}
+              </p>
+              <span className="text-xs text-muted-foreground mt-6 opacity-60">
+                Click to flip back
+              </span>
+            </div>
           </div>
         </div>
       </div>

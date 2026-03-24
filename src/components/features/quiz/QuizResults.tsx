@@ -1,5 +1,8 @@
 "use client";
 
+import { SparklesText } from "@/components/ui/sparkles-text";
+import BlurFade from "@/components/ui/blur-fade";
+
 interface Question {
   _id: string;
   question: string;
@@ -57,6 +60,7 @@ export default function QuizResults({
   return (
     <div className="space-y-8">
       {/* Score Section */}
+      <BlurFade delay={0.2}>
       <div className="rounded-xl border border-border bg-card p-8">
         <div className="flex flex-col items-center">
           {/* SVG Ring */}
@@ -94,9 +98,10 @@ export default function QuizResults({
             </div>
           </div>
 
-          <p className={`mt-3 text-2xl font-bold ${scoreTextColor}`}>
-            {percentage}%
-          </p>
+          <SparklesText
+            text={`${percentage}%`}
+            className={`mt-3 text-2xl font-bold ${scoreTextColor}`}
+          />
           <p className="mt-1 text-sm text-muted-foreground">
             {motivationalText}
           </p>
@@ -109,6 +114,7 @@ export default function QuizResults({
           </button>
         </div>
       </div>
+      </BlurFade>
 
       {/* Question Review */}
       <div className="space-y-4">
@@ -124,8 +130,8 @@ export default function QuizResults({
           const isCorrect = userAnswer === q.correctAnswer;
 
           return (
+            <BlurFade key={q._id} delay={qIdx * 0.05}>
             <div
-              key={q._id}
               className="rounded-xl border border-border bg-card"
             >
               {/* Question header */}
@@ -216,6 +222,7 @@ export default function QuizResults({
                 )}
               </div>
             </div>
+            </BlurFade>
           );
         })}
       </div>

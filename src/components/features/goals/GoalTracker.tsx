@@ -12,8 +12,17 @@ import {
   Loader2,
   Ban,
 } from "lucide-react";
+import { SlideButton } from "@/components/ui/slide-button";
+import BlurFade from "@/components/ui/blur-fade";
+import ShimmerButton from "@/components/ui/shimmer-button";
+import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
+import TextShimmer from "@/components/ui/text-shimmer";
 import { differenceInDays } from "date-fns";
+import CustomSelect from "@/components/ui/custom-select";
+import DatePicker from "@/components/ui/date-picker";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Goal {
   _id: string;
@@ -162,15 +171,15 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
     return Math.min(100, Math.round((g.currentValue / g.targetValue) * 100));
   };
 
-  const renderGoalCard = (goal: Goal) => {
+  const renderGoalCard = (goal: Goal, index: number) => {
     const progress = getProgress(goal);
     const daysLeft = goal.deadline
       ? differenceInDays(new Date(goal.deadline), new Date())
       : null;
 
     return (
+      <BlurFade key={goal._id} delay={0.05 * index}>
       <div
-        key={goal._id}
         className="rounded-xl border border-border bg-card p-4 space-y-3"
       >
         <div className="flex items-start justify-between gap-2">
@@ -244,18 +253,14 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
         {/* Actions */}
         {goal.status === "active" && (
           <div className="flex items-center gap-2 pt-1">
-            <button
+            <AnimatedGenerateButton
+              isLoading={suggestingId === goal._id}
+              idleLabel="Get AI Tip"
+              loadingLabel="Thinking..."
               onClick={() => getAiSuggestion(goal._id)}
               disabled={suggestingId === goal._id}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-orange-500 hover:bg-orange-500/10 transition-colors disabled:opacity-50"
-            >
-              {suggestingId === goal._id ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5" />
-              )}
-              Get AI Tip
-            </button>
+              className="mt-0"
+            />
             <button
               onClick={() => updateStatus(goal._id, "abandoned")}
               className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
@@ -282,6 +287,7 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
           </div>
         )}
       </div>
+      </BlurFade>
     );
   };
 
@@ -289,77 +295,62 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
     <div className="space-y-6">
       {/* Actions */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={refreshProgress}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
-        >
+        <SlideButton onClick={refreshProgress} disabled={refreshing}>
           {refreshing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <RefreshCw className="h-4 w-4" />
           )}
           Refresh Progress
-        </button>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-        >
+        </SlideButton>
+        <ShimmerButton onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl">
           {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           {showForm ? "Cancel" : "New Goal"}
-        </button>
+        </ShimmerButton>
       </div>
 
       {/* Create form */}
       {showForm && (
         <form onSubmit={createGoal} className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <input
+          <Input
             type="text"
             placeholder="Goal title..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+            className="w-full"
           />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <select
+            <CustomSelect
               value={targetType}
-              onChange={(e) => setTargetType(e.target.value)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-            >
-              {Object.entries(targetTypeLabels).map(([val, label]) => (
-                <option key={val} value={val}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <input
+              onValueChange={setTargetType}
+              options={Object.entries(targetTypeLabels).map(([val, label]) => ({ value: val, label }))}
+            />
+            <Input
               type="number"
               placeholder="Target value"
               value={targetValue}
               onChange={(e) => setTargetValue(e.target.value)}
               min="1"
               required
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
             />
-            <input
-              type="date"
+            <DatePicker
               value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+              onChange={setDeadline}
+              placeholder="Deadline (optional)"
             />
           </div>
-          <textarea
+          <Textarea
             placeholder="Description (optional)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none"
+            className="resize-none"
           />
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98]"
           >
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
             Create Goal
@@ -371,13 +362,19 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground mb-3">
           <Target className="h-5 w-5 text-blue-500" />
-          Active Goals ({active.length})
+          <TextShimmer className="text-lg font-semibold">Active Goals ({active.length})</TextShimmer>
         </h2>
         {active.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No active goals. Set one to start tracking!</p>
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+              <Target className="h-6 w-6 text-orange-400/60" />
+            </div>
+            <p className="text-sm font-medium text-foreground/70">No active goals</p>
+            <p className="mt-1 text-xs text-muted-foreground">Set a goal above to start tracking your progress!</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {active.map(renderGoalCard)}
+            {active.map((g, i) => renderGoalCard(g, i))}
           </div>
         )}
       </div>
@@ -387,10 +384,10 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground mb-3">
             <Trophy className="h-5 w-5 text-green-500" />
-            Completed Goals ({completed.length})
+            <TextShimmer className="text-lg font-semibold">Completed Goals ({completed.length})</TextShimmer>
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {completed.map(renderGoalCard)}
+            {completed.map((g, i) => renderGoalCard(g, i))}
           </div>
         </div>
       )}
@@ -399,10 +396,10 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
       {abandoned.length > 0 && (
         <div>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-3">
-            Abandoned ({abandoned.length})
+            <TextShimmer className="text-sm font-semibold">Abandoned ({abandoned.length})</TextShimmer>
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {abandoned.map(renderGoalCard)}
+            {abandoned.map((g, i) => renderGoalCard(g, i))}
           </div>
         </div>
       )}

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Goal from "@/models/Goal";
 import { createGoalSchema } from "@/lib/validations/goal";
+import { TAGS } from "@/lib/data-cache";
 
 export async function GET() {
   try {
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
       deadline: result.data.deadline ? new Date(result.data.deadline) : undefined,
     });
 
+    revalidateTag(TAGS.goals(session.user.id));
     return NextResponse.json({ goal }, { status: 201 });
   } catch (error) {
     console.error("Goal create error:", error);

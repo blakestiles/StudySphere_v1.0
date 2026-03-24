@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Notebook from "@/models/Notebook";
 import { createNotebookSchema } from "@/lib/validations/notebook";
+import { TAGS } from "@/lib/data-cache";
 
 export async function GET(request: Request) {
   try {
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
       studyPackId: result.data.studyPackId || undefined,
     });
 
+    revalidateTag(TAGS.notebooks(session.user.id));
     return NextResponse.json({ notebook }, { status: 201 });
   } catch (error) {
     console.error("Notebook create error:", error);

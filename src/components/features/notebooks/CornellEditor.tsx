@@ -16,9 +16,11 @@ import {
   ListOrdered,
   Undo,
   Redo,
-  Check,
-  Loader2,
 } from "lucide-react";
+import { SaveButton } from "@/components/ui/save-button";
+import { Textarea } from "@/components/ui/textarea";
+import CustomSelect from "@/components/ui/custom-select";
+import TextShimmer from "@/components/ui/text-shimmer";
 import { toast } from "sonner";
 
 interface Notebook {
@@ -138,35 +140,32 @@ export default function CornellEditor({ notebook, studyPacks }: CornellEditorPro
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
-          className="flex-1 bg-transparent text-xl font-bold text-foreground focus:outline-none"
+          className="w-full bg-transparent text-xl font-bold text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus-visible:outline-none border-b border-transparent focus:border-white/20 transition-colors duration-200 pb-1"
           placeholder="Notebook title..."
         />
-        <select
+        <CustomSelect
           value={packId}
-          onChange={(e) => handlePackChange(e.target.value)}
-          className="rounded-xl border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-        >
-          <option value="">No study pack</option>
-          {studyPacks.map((sp) => (
-            <option key={sp._id} value={sp._id}>
-              {sp.title}
-            </option>
-          ))}
-        </select>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          {saveStatus === "saving" && (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Saving...
-            </>
-          )}
-          {saveStatus === "saved" && (
-            <>
-              <Check className="h-3 w-3 text-green-500" />
-              Saved
-            </>
-          )}
-        </div>
+          onValueChange={handlePackChange}
+          options={[
+            { value: "", label: "No study pack" },
+            ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+          ]}
+          placeholder="Link to study pack..."
+        />
+        <SaveButton
+          isLoading={saveStatus === "saving"}
+          isSaved={saveStatus === "saved"}
+          className="transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() =>
+            save({
+              title,
+              cues,
+              summary,
+              notes: editor?.getHTML() ?? "",
+              studyPackId: packId || undefined,
+            })
+          }
+        />
       </div>
 
       {/* Toolbar */}
@@ -199,29 +198,29 @@ export default function CornellEditor({ notebook, studyPacks }: CornellEditorPro
       )}
 
       {/* Cornell Layout */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="rounded-xl border border-border bg-card">
         <div className="flex min-h-[400px]">
           {/* Cues Column */}
           <div className="w-1/3 border-r border-border">
             <div className="px-3 py-2 border-b border-border bg-muted/30">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Cues & Keywords
-              </span>
+              <TextShimmer className="text-xs font-semibold uppercase tracking-wide">
+                Cues &amp; Keywords
+              </TextShimmer>
             </div>
-            <textarea
+            <Textarea
               value={cues}
               onChange={(e) => handleCuesChange(e.target.value)}
               placeholder="Write questions, keywords, or cues here..."
-              className="w-full h-full min-h-[360px] resize-none bg-transparent p-3 text-sm text-foreground focus:outline-none"
+              className="resize-none h-full min-h-[200px] bg-transparent border-none focus-visible:ring-0 text-sm placeholder:text-muted-foreground/40"
             />
           </div>
 
           {/* Notes Column */}
           <div className="flex-1">
             <div className="px-3 py-2 border-b border-border bg-muted/30">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <TextShimmer className="text-xs font-semibold uppercase tracking-wide">
                 Notes
-              </span>
+              </TextShimmer>
             </div>
             <EditorContent editor={editor} />
           </div>
@@ -230,16 +229,16 @@ export default function CornellEditor({ notebook, studyPacks }: CornellEditorPro
         {/* Summary Row */}
         <div className="border-t border-border">
           <div className="px-3 py-2 border-b border-border bg-muted/30">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <TextShimmer className="text-xs font-semibold uppercase tracking-wide">
               Summary
-            </span>
+            </TextShimmer>
           </div>
-          <textarea
+          <Textarea
             value={summary}
             onChange={(e) => handleSummaryChange(e.target.value)}
             placeholder="Summarize the key points from your notes..."
             rows={4}
-            className="w-full resize-none bg-transparent p-3 text-sm text-foreground focus:outline-none"
+            className="resize-none w-full bg-transparent border-none focus-visible:ring-0 text-sm placeholder:text-muted-foreground/40"
           />
         </div>
       </div>

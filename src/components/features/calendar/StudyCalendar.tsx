@@ -22,6 +22,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import EventForm from "./EventForm";
+import ShimmerButton from "@/components/ui/shimmer-button";
+import BlurFade from "@/components/ui/blur-fade";
+import { cn } from "@/lib/utils";
 
 interface StudyPackOption {
   _id: string;
@@ -187,44 +190,45 @@ export default function StudyCalendar({ studyPacks }: StudyCalendarProps) {
   const completedCount = events.filter((e) => e.completed).length;
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+    <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
       {/* ── Left: Calendar Grid ──────────────────────── */}
       <div className="flex-1 min-w-0">
         {/* Calendar Header */}
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
-            {format(currentMonth, "MMMM yyyy")}
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            {format(currentMonth, "MMMM")}{" "}
+            <span className="font-normal text-muted-foreground">{format(currentMonth, "yyyy")}</span>
           </h2>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentMonth(new Date())}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              className="rounded-full border border-border/70 px-3.5 py-1.5 text-xs font-semibold text-foreground transition-all hover:border-orange-500/40 hover:bg-orange-500/8 hover:text-orange-600 dark:hover:text-orange-400"
             >
               Today
             </button>
             <button
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-              className="rounded-lg border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="rounded-full border border-border/70 p-2 text-muted-foreground transition-all hover:border-orange-500/30 hover:bg-muted hover:text-foreground"
             >
-              <ChevronLeftIcon className="h-4 w-4" />
+              <ChevronLeftIcon className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              className="rounded-lg border border-border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="rounded-full border border-border/70 p-2 text-muted-foreground transition-all hover:border-orange-500/30 hover:bg-muted hover:text-foreground"
             >
-              <ChevronRightIcon className="h-4 w-4" />
+              <ChevronRightIcon className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
         {/* Calendar Grid */}
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
           {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-border bg-muted/30">
+          <div className="grid grid-cols-7 border-b border-border/60 bg-muted/20">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className="py-3 text-center text-xs font-medium text-muted-foreground"
+                className="py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70"
               >
                 {day}
               </div>
@@ -246,50 +250,48 @@ export default function StudyCalendar({ studyPacks }: StudyCalendarProps) {
                 <button
                   key={idx}
                   onClick={() => setSelectedDate(day)}
-                  className={`relative flex min-h-[72px] flex-col items-center border-b border-r border-border py-2 transition-colors sm:min-h-[80px] ${
-                    !inCurrentMonth
-                      ? "text-muted-foreground/30"
-                      : "text-foreground"
-                  } ${
-                    isSelected
-                      ? "bg-orange-500/10"
-                      : "hover:bg-muted/40"
-                  }`}
+                  className={cn(
+                    "relative flex min-h-[76px] flex-col items-center gap-0.5 border-b border-r border-border/40 px-1 py-2.5 transition-all duration-150 sm:min-h-[84px]",
+                    !inCurrentMonth ? "text-muted-foreground/25" : "text-foreground",
+                    isSelected ? "bg-orange-500/8 dark:bg-orange-500/10" : "hover:bg-muted/60"
+                  )}
                 >
+                  {/* Day number */}
                   <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors ${
-                      today
-                        ? "bg-orange-500 font-bold text-white"
-                        : isSelected
-                        ? "font-semibold text-orange-400"
-                        : ""
-                    }`}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all",
+                      today && "bg-orange-500 font-bold text-white shadow-md shadow-orange-500/30",
+                      isSelected && !today && "bg-orange-500/15 font-semibold text-orange-600 ring-1 ring-orange-500/30 dark:text-orange-400",
+                      !today && !isSelected && inCurrentMonth && "hover:bg-muted"
+                    )}
                   >
                     {format(day, "d")}
                   </span>
 
-                  {/* Event indicators */}
+                  {/* Event pills */}
                   {hasEvents && (
-                    <div className="mt-1 flex items-center gap-0.5">
-                      {dayEvents.slice(0, 4).map((e) => (
+                    <div className="flex w-full items-center justify-center gap-0.5 px-1">
+                      {dayEvents.slice(0, 3).map((e) => (
                         <span
                           key={e._id}
-                          className={`h-1.5 w-1.5 rounded-full ${e.completed ? "opacity-40" : ""}`}
-                          style={{ backgroundColor: e.color }}
+                          className={cn("h-1 flex-1 rounded-full", e.completed && "opacity-40")}
+                          style={{ backgroundColor: e.color, maxWidth: "20px" }}
                         />
                       ))}
-                      {dayEvents.length > 4 && (
-                        <span className="ml-0.5 text-[8px] text-muted-foreground">
-                          +{dayEvents.length - 4}
+                      {dayEvents.length > 3 && (
+                        <span className="text-[9px] font-medium text-muted-foreground">
+                          +{dayEvents.length - 3}
                         </span>
                       )}
                     </div>
                   )}
 
-                  {/* All done indicator */}
+                  {/* All done checkmark */}
                   {allDone && (
-                    <div className="absolute right-1 top-1">
-                      <CheckIcon className="h-3 w-3 text-emerald-500" />
+                    <div className="absolute right-1.5 top-1.5">
+                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/15">
+                        <CheckIcon className="h-2.5 w-2.5 text-emerald-500" />
+                      </div>
                     </div>
                   )}
                 </button>
@@ -299,11 +301,14 @@ export default function StudyCalendar({ studyPacks }: StudyCalendarProps) {
         </div>
 
         {/* Month summary */}
-        <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{monthEventCount} session{monthEventCount !== 1 ? "s" : ""} this month</span>
+        <div className="mt-3 flex items-center gap-4 px-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500/60" />
+            {monthEventCount} session{monthEventCount !== 1 ? "s" : ""} this month
+          </span>
           {completedCount > 0 && (
-            <span className="flex items-center gap-1">
-              <CheckIcon className="h-3 w-3 text-emerald-500" />
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
               {completedCount} completed
             </span>
           )}
@@ -312,57 +317,56 @@ export default function StudyCalendar({ studyPacks }: StudyCalendarProps) {
 
       {/* ── Right: Detail Panel ──────────────────────── */}
       <div className="w-full lg:w-80 xl:w-96">
-        <div className="rounded-xl border border-border bg-card">
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
           {!selectedDate ? (
             /* Empty state */
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 rounded-xl border border-border bg-muted/50 p-4">
-                <CalendarIcon className="h-8 w-8 text-muted-foreground" />
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
+                <CalendarIcon className="h-8 w-8 text-muted-foreground/50" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Select a date to view or add sessions
-              </p>
+              <p className="text-sm font-medium text-muted-foreground">Select a date</p>
+              <p className="mt-1 text-xs text-muted-foreground/60">to view or add study sessions</p>
             </div>
           ) : (
             <>
               {/* Panel Header */}
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-sm font-bold text-foreground">
                     {format(selectedDate, "EEEE")}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {format(selectedDate, "MMMM d, yyyy")}
                   </p>
                 </div>
-                <button
+                <ShimmerButton
                   onClick={() => setShowForm(true)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-white transition-colors hover:bg-orange-600"
-                  title="Add session"
+                  className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold"
                 >
-                  <PlusIcon className="h-4 w-4" />
-                </button>
+                  <PlusIcon className="h-3.5 w-3.5" />
+                  Add Session
+                </ShimmerButton>
               </div>
 
               {/* Events List */}
-              <div className="px-4 py-3">
+              <div className="px-3 py-3">
                 {loading ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center justify-center py-10">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
                   </div>
                 ) : selectedDayEvents.length === 0 ? (
-                  <div className="py-8 text-center">
+                  <div className="py-10 text-center">
                     <p className="text-sm text-muted-foreground">No sessions scheduled</p>
                     <button
                       onClick={() => setShowForm(true)}
-                      className="mt-2 text-xs font-medium text-orange-400 hover:text-orange-300"
+                      className="mt-2 text-xs font-semibold text-orange-500 hover:text-orange-400 dark:text-orange-400 dark:hover:text-orange-300"
                     >
                       + Add a study session
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {selectedDayEvents.map((event) => {
+                    {selectedDayEvents.map((event, index) => {
                       const packTitle =
                         event.studyPackId &&
                         typeof event.studyPackId === "object" &&
@@ -371,84 +375,87 @@ export default function StudyCalendar({ studyPacks }: StudyCalendarProps) {
                           : null;
 
                       return (
-                        <div
-                          key={event._id}
-                          className={`group rounded-lg border border-border p-3 transition-colors ${
-                            event.completed ? "opacity-60" : ""
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            {/* Color indicator */}
-                            <div
-                              className="mt-0.5 h-3 w-3 shrink-0 rounded-full"
-                              style={{ backgroundColor: event.color }}
-                            />
+                        <BlurFade key={event._id} delay={index * 0.05}>
+                          <div
+                            className={cn(
+                              "group rounded-xl border border-border/50 bg-background/60 p-3 transition-all hover:border-border",
+                              event.completed && "opacity-60"
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              {/* Color bar */}
+                              <div
+                                className="mt-1 h-full w-1 shrink-0 self-stretch rounded-full"
+                                style={{ backgroundColor: event.color, minHeight: "36px" }}
+                              />
 
-                            <div className="flex-1 min-w-0">
-                              {/* Title row */}
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-sm font-medium text-foreground ${
-                                    event.completed ? "line-through text-muted-foreground" : ""
-                                  }`}
-                                >
-                                  {event.title}
-                                </span>
-                                {event.isAiGenerated && (
-                                  <span className="rounded bg-purple-500/20 px-1.5 py-0.5 text-[9px] font-medium text-purple-400">
-                                    AI
+                              <div className="flex-1 min-w-0">
+                                {/* Title row */}
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      "text-sm font-semibold text-foreground",
+                                      event.completed && "line-through text-muted-foreground"
+                                    )}
+                                  >
+                                    {event.title}
                                   </span>
-                                )}
-                              </div>
+                                  {event.isAiGenerated && (
+                                    <span className="rounded-md bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-500 dark:text-purple-400">
+                                      AI
+                                    </span>
+                                  )}
+                                </div>
 
-                              {/* Meta */}
-                              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                {event.startTime && (
-                                  <span className="flex items-center gap-1">
-                                    <ClockIcon className="h-3 w-3" />
-                                    {event.startTime}
+                                {/* Meta */}
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                                  {event.startTime && (
+                                    <span className="flex items-center gap-1">
+                                      <ClockIcon className="h-3 w-3" />
+                                      {event.startTime}
+                                    </span>
+                                  )}
+                                  <span className="rounded-md bg-muted px-1.5 py-0.5 font-medium">
+                                    {event.duration} min
                                   </span>
-                                )}
-                                <span>{event.duration} min</span>
-                                {packTitle && (
-                                  <>
-                                    <span className="text-border">|</span>
-                                    <span className="truncate">{packTitle}</span>
-                                  </>
-                                )}
-                              </div>
+                                  {packTitle && (
+                                    <span className="truncate text-muted-foreground/70">{packTitle}</span>
+                                  )}
+                                </div>
 
-                              {/* Description */}
-                              {event.description && (
-                                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                                  {event.description}
-                                </p>
-                              )}
+                                {/* Description */}
+                                {event.description && (
+                                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/80">
+                                    {event.description}
+                                  </p>
+                                )}
+
+                                {/* Actions */}
+                                <div className="mt-2.5 flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => toggleCompleted(event._id, event.completed)}
+                                    className={cn(
+                                      "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all",
+                                      event.completed
+                                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                        : "bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
+                                    )}
+                                  >
+                                    <CheckIcon className="h-3 w-3" />
+                                    {event.completed ? "Done" : "Mark done"}
+                                  </button>
+                                  <button
+                                    onClick={() => deleteEvent(event._id)}
+                                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500"
+                                  >
+                                    <TrashIcon className="h-3 w-3" />
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-
-                          {/* Actions */}
-                          <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
-                            <button
-                              onClick={() => toggleCompleted(event._id, event.completed)}
-                              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                                event.completed
-                                  ? "bg-emerald-500/20 text-emerald-400"
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                              }`}
-                            >
-                              <CheckIcon className="h-3 w-3" />
-                              {event.completed ? "Completed" : "Mark done"}
-                            </button>
-                            <button
-                              onClick={() => deleteEvent(event._id)}
-                              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/10"
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                              Delete
-                            </button>
-                          </div>
-                        </div>
+                        </BlurFade>
                       );
                     })}
                   </div>

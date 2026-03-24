@@ -1,38 +1,19 @@
-export const dynamic = "force-dynamic";
+import FocusShell from "@/components/features/focus/FocusShell";
+import BlurFade from "@/components/ui/blur-fade";
+import TextShimmer from "@/components/ui/text-shimmer";
 
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import connectDB from "@/lib/db";
-import StudyPack from "@/models/StudyPack";
-import FocusMode from "@/components/features/focus/FocusMode";
-
-export default async function FocusPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  await connectDB();
-
-  const studyPacks = await StudyPack.find({
-    userId: session.user.id,
-    status: "ready",
-  })
-    .select("title")
-    .lean();
-
-  const serializedPacks = studyPacks.map((sp) => ({
-    _id: String(sp._id),
-    title: sp.title as string,
-  }));
-
+export default function FocusPage() {
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Focus Mode</h1>
-        <p className="text-sm text-muted-foreground">
-          Pomodoro-powered deep work sessions
-        </p>
+    <BlurFade delay={0.1} duration={0.4}>
+      <div className="space-y-6">
+        <div className="text-center">
+          <TextShimmer className="text-2xl font-bold">Focus Mode</TextShimmer>
+          <p className="text-sm text-muted-foreground">
+            Pomodoro-powered deep work sessions
+          </p>
+        </div>
+        <FocusShell />
       </div>
-      <FocusMode studyPacks={serializedPacks} />
-    </div>
+    </BlurFade>
   );
 }

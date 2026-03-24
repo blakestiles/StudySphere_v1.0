@@ -13,7 +13,8 @@ export async function GET() {
     await connectDB();
     const studyPacks = await StudyPack.find({ userId: session.user.id })
       .sort({ createdAt: -1 })
-      .populate("documentId", "title");
+      .populate("documentId", "title")
+      .lean();
 
     return NextResponse.json(studyPacks);
   } catch (error) {

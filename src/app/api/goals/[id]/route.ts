@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Goal from "@/models/Goal";
 import client from "@/lib/claude";
 import { updateGoalSchema } from "@/lib/validations/goal";
+import { TAGS } from "@/lib/data-cache";
 
 export async function PATCH(
   request: Request,
@@ -57,6 +59,7 @@ export async function PATCH(
 
     await goal.save();
 
+    revalidateTag(TAGS.goals(session.user.id));
     return NextResponse.json({ goal });
   } catch (error) {
     console.error("Goal update error:", error);
@@ -84,6 +87,7 @@ export async function DELETE(
 
     await Goal.findByIdAndDelete(id);
 
+    revalidateTag(TAGS.goals(session.user.id));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Goal delete error:", error);

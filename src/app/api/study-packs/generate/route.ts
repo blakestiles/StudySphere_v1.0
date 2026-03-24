@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
+import { TAGS } from "@/lib/data-cache";
 import Document from "@/models/Document";
 import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
@@ -112,6 +114,8 @@ export async function POST(request: Request) {
     studyPack.mindMap = generated.mindMap || null;
     await studyPack.save();
 
+    revalidateTag(TAGS.studyPacks(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({ studyPack }, { status: 201 });
   } catch (error) {
     console.error("Study pack generation error:", error);

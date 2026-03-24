@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import ShineBorder from "@/components/ui/shine-border";
+import Meteors from "@/components/ui/meteors";
+import { GlowingStarsBackgroundCard, GlowingStarsTitle, GlowingStarsDescription } from "@/components/ui/glowing-stars-card";
+import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
+import BlurFade from "@/components/ui/blur-fade";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -178,18 +184,18 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">
-      <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `${color}15`, color }}
-      >
-        {icon}
+      <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${color}15`, color }}
+        >
+          {icon}
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
       </div>
-      <div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-    </div>
   );
 }
 
@@ -268,16 +274,18 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12">
       {/* ── Header ──────────────────────────────────── */}
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-        {/* Avatar */}
-        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-3xl font-bold text-white shadow-lg">
-          {getInitials(user.name)}
-        </div>
+      <ShineBorder color={["#fbbf24", "#f59e0b", "#d97706"]} borderRadius={16} className="p-0">
+        <div className="relative overflow-hidden flex flex-col items-center gap-6 sm:flex-row sm:items-start rounded-2xl bg-card p-6">
+          <Meteors count={6} className="opacity-30" />
+          {/* Avatar */}
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-3xl font-bold text-white shadow-lg">
+            {getInitials(user.name)}
+          </div>
 
-        <div className="flex-1 text-center sm:text-left">
-          {!editing ? (
-            <>
-              <h1 className="text-3xl font-bold text-foreground">{name}</h1>
+          <div className="flex-1 text-center sm:text-left">
+            {!editing ? (
+              <>
+                <SparklesText text={name} className="text-2xl font-bold text-white" />
               <p className="text-muted-foreground">{user.email}</p>
               {bio && <p className="mt-2 text-sm text-muted-foreground">{bio}</p>}
               <p className="mt-1 text-xs text-muted-foreground">
@@ -305,17 +313,17 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
                 <Input value={user.email} disabled className="bg-muted" />
               </div>
               <div className="flex gap-2">
-                <button
+                <AnimatedGenerateButton
+                  isLoading={saving}
+                  idleLabel="Save Profile"
+                  loadingLabel="Saving..."
                   type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save"}
-                </button>
+                  className="w-full mt-4"
+                />
                 <button
                   type="button"
                   onClick={() => { setEditing(false); setName(user.name); setBio(user.bio); }}
-                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                  className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-white/5 hover:text-foreground hover:border-white/20 active:scale-[0.98]"
                 >
                   Cancel
                 </button>
@@ -324,23 +332,29 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
           )}
         </div>
 
-        {!editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-          >
-            <PencilIcon className="h-4 w-4" />
-            Edit Profile
-          </button>
-        )}
-      </div>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-white/5 hover:text-foreground hover:border-white/20 active:scale-[0.98]"
+            >
+              <PencilIcon className="h-4 w-4" />
+              Edit Profile
+            </button>
+          )}
+        </div>
+      </ShineBorder>
 
       {/* ── Stats Grid ──────────────────────────────── */}
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">Overview</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatCard icon={<ClockIcon className="h-5 w-5" />} value={formatStudyTime(user.totalStudyMinutes)} label="Total Study Time" color="#f97316" />
-          <StatCard icon={<FlameIcon className="h-5 w-5" />} value={`${user.currentStreak} / ${user.longestStreak}`} label="Current / Best Streak" color="#ef4444" />
+          <div className="col-span-2 sm:col-span-1">
+            <GlowingStarsBackgroundCard className="w-full">
+              <GlowingStarsTitle>{user.currentStreak} Day Streak</GlowingStarsTitle>
+              <GlowingStarsDescription>Longest: {user.longestStreak} days</GlowingStarsDescription>
+            </GlowingStarsBackgroundCard>
+          </div>
           <StatCard icon={<FileIcon className="h-5 w-5" />} value={stats.documentCount} label="Documents" color="#3b82f6" />
           <StatCard icon={<BookIcon className="h-5 w-5" />} value={stats.studyPackCount} label="Study Packs" color="#8b5cf6" />
           <StatCard icon={<CheckCircleIcon className="h-5 w-5" />} value={stats.quizCount} label="Quizzes Taken" color="#10b981" />
@@ -392,14 +406,14 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
           </div>
 
           {/* Score rings + cards reviewed */}
-          <div className="flex flex-wrap items-center justify-around gap-6">
-            <ScoreRing score={stats.quizAvg} label="Avg Quiz Score" color="#10b981" />
-            <ScoreRing score={stats.essayAvg} label="Avg Essay Score" color="#8b5cf6" />
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-3xl font-bold text-foreground">{stats.totalCardsReviewed}</span>
-              <span className="text-xs text-muted-foreground">Cards Reviewed</span>
+            <div className="flex flex-wrap items-center justify-around gap-6">
+              <ScoreRing score={stats.quizAvg} label="Avg Quiz Score" color="#10b981" />
+              <ScoreRing score={stats.essayAvg} label="Avg Essay Score" color="#8b5cf6" />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-3xl font-bold text-foreground">{stats.totalCardsReviewed}</span>
+                <span className="text-xs text-muted-foreground">Cards Reviewed</span>
+              </div>
             </div>
-          </div>
         </div>
       </section>
 
@@ -412,24 +426,25 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {achievements.map((a) => (
-            <div
-              key={a.id}
-              className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors ${
-                a.unlocked
-                  ? "border-orange-500/30 bg-card"
-                  : "border-border bg-muted/50 opacity-50"
-              }`}
-            >
-              {!a.unlocked && (
-                <div className="absolute right-2 top-2">
-                  <LockIcon className="h-3.5 w-3.5 text-muted-foreground" />
+          {achievements.map((a, index) => (
+            <BlurFade key={a.id} delay={index * 0.05}>
+                <div
+                  className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors ${
+                    a.unlocked
+                      ? "border-orange-500/30 bg-card"
+                      : "border-border bg-muted/50 opacity-50"
+                  }`}
+                >
+                  {!a.unlocked && (
+                    <div className="absolute right-2 top-2">
+                      <LockIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="text-2xl">{a.icon}</span>
+                  <span className="text-xs font-semibold text-foreground leading-tight">{a.label}</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">{a.description}</span>
                 </div>
-              )}
-              <span className="text-2xl">{a.icon}</span>
-              <span className="text-xs font-semibold text-foreground leading-tight">{a.label}</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">{a.description}</span>
-            </div>
+            </BlurFade>
           ))}
         </div>
       </section>

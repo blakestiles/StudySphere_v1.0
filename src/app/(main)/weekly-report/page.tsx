@@ -1,49 +1,22 @@
-export const dynamic = "force-dynamic";
 
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import connectDB from "@/lib/db";
-import WeeklyReport from "@/models/WeeklyReport";
+import { requireSession } from "@/lib/auth-cache";
+import { getCachedWeeklyReports } from "@/lib/data-cache";
 import WeeklyReportView from "@/components/features/reports/WeeklyReportView";
+import BlurFade from "@/components/ui/blur-fade";
+import TextShimmer from "@/components/ui/text-shimmer";
 
 export default async function WeeklyReportPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  await connectDB();
-
-  const reports = await WeeklyReport.find({ userId: session.user.id })
-    .sort({ weekStart: -1 })
-    .limit(12)
-    .lean();
-
-  const serializedReports = reports.map((r) => ({
-    _id: String(r._id),
-    weekStart: (r.weekStart as Date).toISOString(),
-    weekEnd: (r.weekEnd as Date).toISOString(),
-    summary: r.summary as string,
-    strengths: r.strengths as string[],
-    weaknesses: r.weaknesses as string[],
-    recommendations: r.recommendations as string[],
-    stats: r.stats as {
-      studyMinutes: number;
-      quizzesTaken: number;
-      avgScore: number;
-      cardsReviewed: number;
-      essaysWritten: number;
-    },
-    createdAt: (r.createdAt as Date).toISOString(),
-  }));
+  const session = await requireSession();
+  const serializedReports = await getCachedWeeklyReports(session.user.id);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">AI Weekly Report</h1>
-        <p className="text-sm text-muted-foreground">
-          AI-generated analysis of your weekly study performance
-        </p>
+    <BlurFade delay={0.1} duration={0.4}>
+      <div className="space-y-4">
+        <div>
+          <TextShimmer className="text-2xl font-bold">AI Weekly Report</TextShimmer>
+        </div>
+        <WeeklyReportView initialReports={serializedReports} />
       </div>
-      <WeeklyReportView initialReports={serializedReports} />
-    </div>
+    </BlurFade>
   );
 }

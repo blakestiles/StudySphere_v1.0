@@ -1,6 +1,5 @@
-export const dynamic = "force-dynamic";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/auth-cache";
 import { redirect } from "next/navigation";
 import connectDB from "@/lib/db";
 import Notebook from "@/models/Notebook";
@@ -16,8 +15,7 @@ export default async function NotebookEditorPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const session = await requireSession();
 
   const { id } = await params;
   await connectDB();

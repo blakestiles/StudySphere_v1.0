@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import TextShimmer from "@/components/ui/text-shimmer";
 
 const AnalyticsDashboard = dynamic(
   () => import("@/components/features/analytics/AnalyticsDashboard"),
@@ -19,7 +20,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
+        <TextShimmer className="text-2xl font-bold text-white" duration={4}>Analytics</TextShimmer>
         <p className="text-sm text-muted-foreground">
           Track your study progress and performance
         </p>

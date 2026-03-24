@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useTheme } from "next-themes";
+import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
+import BlurFade from "@/components/ui/blur-fade";
+import TextShimmer from "@/components/ui/text-shimmer";
 import {
   LineChart,
   BarChart,
@@ -60,25 +63,29 @@ function StatCard({
   value,
   label,
   color,
+  streak,
 }: {
   icon: React.ReactNode;
   value: number | string;
   label: string;
   color: string;
+  streak?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">
-      <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `${color}15`, color }}
-      >
-        {icon}
+      <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 h-full">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${color}15`, color }}
+        >
+          {icon}
+        </div>
+        <div>
+          <TextShimmer className="text-3xl font-bold text-white" duration={4}>
+            {String(value)}
+          </TextShimmer>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
       </div>
-      <div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-    </div>
   );
 }
 
@@ -94,16 +101,18 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-orange-400">&#9679;</span>
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        {subtitle && (
-          <span className="text-xs text-muted-foreground">{subtitle}</span>
-        )}
+      <div className="flex flex-col rounded-xl border border-border bg-card p-5 h-full">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-orange-400">&#9679;</span>
+          <TextShimmer className="text-base font-semibold text-white/80" duration={4}>
+            {title}
+          </TextShimmer>
+          {subtitle && (
+            <span className="text-xs text-muted-foreground">{subtitle}</span>
+          )}
+        </div>
+        <div className="min-h-0 flex-1">{children}</div>
       </div>
-      <div className="min-h-0 flex-1">{children}</div>
-    </div>
   );
 }
 
@@ -320,178 +329,197 @@ export default function AnalyticsDashboard() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5">
+      <AnimatedGridPattern className="absolute inset-0 opacity-[0.05] pointer-events-none" numSquares={20} />
+
       {/* ── Top Stat Cards ─────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          icon={<CardsIcon />}
-          value={totalCardsReviewed}
-          label="Cards Reviewed"
-          color="#fb923c"
-        />
-        <StatCard
-          icon={<ClockIcon />}
-          value={totalStudyMins}
-          label="Study Minutes"
-          color="#60a5fa"
-        />
-        <StatCard
-          icon={<PenIcon />}
-          value={data.totals.essays}
-          label="Essays Written"
-          color="#c084fc"
-        />
-        <StatCard
-          icon={<FlameIcon />}
-          value={data.streak.current}
-          label="Day Streak"
-          color="#f97316"
-        />
+        <BlurFade delay={0 * 0.08}>
+          <StatCard
+            icon={<CardsIcon />}
+            value={totalCardsReviewed}
+            label="Cards Reviewed"
+            color="#fb923c"
+          />
+        </BlurFade>
+        <BlurFade delay={1 * 0.08}>
+          <StatCard
+            icon={<ClockIcon />}
+            value={totalStudyMins}
+            label="Study Minutes"
+            color="#60a5fa"
+          />
+        </BlurFade>
+        <BlurFade delay={2 * 0.08}>
+          <StatCard
+            icon={<PenIcon />}
+            value={data.totals.essays}
+            label="Essays Written"
+            color="#c084fc"
+          />
+        </BlurFade>
+        <BlurFade delay={3 * 0.08}>
+          <StatCard
+            icon={<FlameIcon />}
+            value={data.streak.current}
+            label="Day Streak"
+            color="#f97316"
+            streak
+          />
+        </BlurFade>
       </div>
 
       {/* ── 2x2 Chart Grid ─────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Daily Reviews Bar Chart */}
-        <ChartCard title="Daily Activity" subtitle="(Last 14 Days)">
-          {reviewChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={reviewChartData}>
-                <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  fontSize={10}
-                  tick={{ fill: tickFill }}
-                  axisLine={{ stroke: gridStroke }}
-                  tickLine={false}
-                />
-                <YAxis
-                  fontSize={10}
-                  tick={{ fill: tickFill }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  dataKey="reviews"
-                  name="Reviews"
-                  fill="#fb923c"
-                  radius={[3, 3, 0, 0]}
-                  fillOpacity={0.85}
-                  stackId="a"
-                />
-                <Bar
-                  dataKey="quizzes"
-                  name="Quizzes"
-                  fill="#60a5fa"
-                  radius={[0, 0, 0, 0]}
-                  fillOpacity={0.85}
-                  stackId="a"
-                />
-                <Bar
-                  dataKey="essays"
-                  name="Essays"
-                  fill="#c084fc"
-                  radius={[3, 3, 0, 0]}
-                  fillOpacity={0.85}
-                  stackId="a"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-[220px] items-center justify-center">
-              <p className="text-sm text-muted-foreground">No activity yet. Start studying!</p>
-            </div>
-          )}
-        </ChartCard>
+        <BlurFade delay={0 * 0.1}>
+          <ChartCard title="Daily Activity" subtitle="(Last 14 Days)">
+            {reviewChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={reviewChartData}>
+                  <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    fontSize={10}
+                    tick={{ fill: tickFill }}
+                    axisLine={{ stroke: gridStroke }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    fontSize={10}
+                    tick={{ fill: tickFill }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar
+                    dataKey="reviews"
+                    name="Reviews"
+                    fill="#fb923c"
+                    radius={[3, 3, 0, 0]}
+                    fillOpacity={0.85}
+                    stackId="a"
+                  />
+                  <Bar
+                    dataKey="quizzes"
+                    name="Quizzes"
+                    fill="#60a5fa"
+                    radius={[0, 0, 0, 0]}
+                    fillOpacity={0.85}
+                    stackId="a"
+                  />
+                  <Bar
+                    dataKey="essays"
+                    name="Essays"
+                    fill="#c084fc"
+                    radius={[3, 3, 0, 0]}
+                    fillOpacity={0.85}
+                    stackId="a"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center">
+                <p className="text-sm text-muted-foreground">No activity yet. Start studying!</p>
+              </div>
+            )}
+          </ChartCard>
+        </BlurFade>
 
         {/* Quiz Score Trend */}
-        <ChartCard title="Quiz Score Trend">
-          {quizData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={quizData}>
-                <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  fontSize={10}
-                  tick={{ fill: tickFill }}
-                  axisLine={{ stroke: gridStroke }}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  fontSize={10}
-                  tick={{ fill: tickFill }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#fb923c"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#fb923c", stroke: dotStroke, strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: "#fb923c", stroke: "#fff", strokeWidth: 2 }}
-                  name="Score %"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-[220px] items-center justify-center">
-              <p className="text-sm text-muted-foreground">No quiz data yet. Take a quiz to see trends!</p>
-            </div>
-          )}
-        </ChartCard>
+        <BlurFade delay={1 * 0.1}>
+          <ChartCard title="Quiz Score Trend">
+            {quizData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={quizData}>
+                  <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    fontSize={10}
+                    tick={{ fill: tickFill }}
+                    axisLine={{ stroke: gridStroke }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    fontSize={10}
+                    tick={{ fill: tickFill }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#fb923c"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#fb923c", stroke: dotStroke, strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: "#fb923c", stroke: "#fff", strokeWidth: 2 }}
+                    name="Score %"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center">
+                <p className="text-sm text-muted-foreground">No quiz data yet. Take a quiz to see trends!</p>
+              </div>
+            )}
+          </ChartCard>
+        </BlurFade>
 
         {/* Essay Score Trend */}
-        <ChartCard
-          title="Essay Score Trend"
-          subtitle={data.avgEssayScore > 0 ? `(Avg: ${data.avgEssayScore}/10)` : undefined}
-        >
-          {essayChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={essayChartData}>
-                <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  fontSize={10}
-                  tick={{ fill: tickFill }}
-                  axisLine={{ stroke: gridStroke }}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  fontSize={10}
-                  tick={{ fill: tickFill }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#c084fc"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#c084fc", stroke: dotStroke, strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: "#c084fc", stroke: "#fff", strokeWidth: 2 }}
-                  name="Score /10"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-[220px] items-center justify-center">
-              <p className="text-sm text-muted-foreground">No essay data yet. Write a practice essay!</p>
-            </div>
-          )}
-        </ChartCard>
+        <BlurFade delay={2 * 0.1}>
+          <ChartCard
+            title="Essay Score Trend"
+            subtitle={data.avgEssayScore > 0 ? `(Avg: ${data.avgEssayScore}/10)` : undefined}
+          >
+            {essayChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={essayChartData}>
+                  <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    fontSize={10}
+                    tick={{ fill: tickFill }}
+                    axisLine={{ stroke: gridStroke }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 10]}
+                    fontSize={10}
+                    tick={{ fill: tickFill }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#c084fc"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#c084fc", stroke: dotStroke, strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: "#c084fc", stroke: "#fff", strokeWidth: 2 }}
+                    name="Score /10"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center">
+                <p className="text-sm text-muted-foreground">No essay data yet. Write a practice essay!</p>
+              </div>
+            )}
+          </ChartCard>
+        </BlurFade>
 
         {/* Flashcard Mastery Donut */}
-        <ChartCard title="Flashcard Mastery">
-          <div className="flex h-[220px] items-center justify-center">
-            <DonutChart data={masteryData} />
-          </div>
-        </ChartCard>
+        <BlurFade delay={3 * 0.1}>
+          <ChartCard title="Flashcard Mastery">
+            <div className="flex h-[220px] items-center justify-center">
+              <DonutChart data={masteryData} />
+            </div>
+          </ChartCard>
+        </BlurFade>
       </div>
     </div>
   );

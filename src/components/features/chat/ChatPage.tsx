@@ -4,6 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MessageLoadingBubble } from "@/components/ui/message-loading";
+import { AIChatCard } from "@/components/ui/ai-chat-card";
+import BlurFade from "@/components/ui/blur-fade";
+import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
+import CustomSelect from "@/components/ui/custom-select";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -125,6 +130,7 @@ export default function ChatPage() {
   const [isListening, setIsListening] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [studyPacks, setStudyPacks] = useState<{ _id: string; title: string }[]>([]);
+  const [newChatPack, setNewChatPack] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -341,21 +347,18 @@ export default function ChatPage() {
               New Chat
             </button>
             {studyPacks.length > 0 && (
-              <select
-                className="mt-3 w-full rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                onChange={(e) => {
-                  if (e.target.value) createThread(e.target.value);
-                  e.target.value = "";
+              <CustomSelect
+                value={newChatPack}
+                onValueChange={(val) => {
+                  setNewChatPack("");
+                  if (val) createThread(val);
                 }}
-                defaultValue=""
-              >
-                <option value="">New chat with study pack...</option>
-                {studyPacks.map((sp) => (
-                  <option key={sp._id} value={sp._id}>
-                    {sp.title}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "", label: "New chat with study pack..." },
+                  ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+                ]}
+                className="mt-3"
+              />
             )}
           </div>
 
@@ -366,35 +369,36 @@ export default function ChatPage() {
                 No chats yet. Start a new one!
               </p>
             ) : (
-              threads.map((thread) => (
-                <div
-                  key={thread._id}
-                  className={`group flex cursor-pointer items-start gap-2 border-b border-border px-3 py-3 transition-colors hover:bg-muted/50 ${
-                    selectedThreadId === thread._id ? "bg-muted/70" : ""
-                  }`}
-                  onClick={() => selectThread(thread._id)}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{thread.title}</p>
-                    {thread.studyPackId && (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {thread.studyPackId.title}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(thread.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteThread(thread._id);
-                    }}
-                    className="mt-0.5 rounded p-1 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+              threads.map((thread, index) => (
+                <BlurFade key={thread._id} delay={index * 0.03}>
+                  <div
+                    className={`group flex cursor-pointer items-start gap-2 border-b border-border px-3 py-3 transition-colors hover:bg-muted/50 ${
+                      selectedThreadId === thread._id ? "bg-muted/70" : ""
+                    }`}
+                    onClick={() => selectThread(thread._id)}
                   >
-                    <XIcon className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{thread.title}</p>
+                      {thread.studyPackId && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {thread.studyPackId.title}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(thread.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteThread(thread._id);
+                      }}
+                      className="mt-0.5 rounded p-1 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </BlurFade>
               ))
             )}
           </div>
@@ -428,21 +432,8 @@ export default function ChatPage() {
               </button>
             </div>
 
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8">
-              <SparklesIcon className="mb-2 h-12 w-12 text-orange-400" />
-              <h3 className="text-center text-lg font-semibold text-foreground">
-                Ask anything about your study materials
-              </h3>
-              <p className="text-center text-sm text-muted-foreground">
-                Use the mic to record voice notes, or toggle ELI5 for simpler answers
-              </p>
-              <button
-                onClick={() => createThread()}
-                className="mt-4 flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Start a New Chat
-              </button>
+            <div className="flex items-center justify-center h-full">
+              <AIChatCard />
             </div>
           </>
         ) : (
@@ -477,7 +468,8 @@ export default function ChatPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="relative flex-1 overflow-y-auto p-4">
+              <AnimatedGridPattern className="absolute inset-0 opacity-[0.03] pointer-events-none" numSquares={25} />
               {messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3">
                   <SparklesIcon className="h-10 w-10 text-orange-400" />
@@ -534,13 +526,7 @@ export default function ChatPage() {
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                        <span className="inline-flex gap-1">
-                          <span className="animate-bounce">.</span>
-                          <span className="animate-bounce" style={{ animationDelay: "0.1s" }}>.</span>
-                          <span className="animate-bounce" style={{ animationDelay: "0.2s" }}>.</span>
-                        </span>
-                      </div>
+                      <MessageLoadingBubble className="my-2" />
                     </div>
                   )}
                   <div ref={messagesEndRef} />

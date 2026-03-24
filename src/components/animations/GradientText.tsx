@@ -23,7 +23,7 @@ export default function GradientText({
   return (
     <span
       className={cn(
-        "bg-gradient-to-r bg-clip-text text-transparent",
+        "inline-block pb-1 bg-gradient-to-r bg-clip-text text-transparent",
         from,
         via,
         to,

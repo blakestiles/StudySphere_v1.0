@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import client from "@/lib/claude";
+import { TAGS } from "@/lib/data-cache";
 import { startOfWeek, endOfWeek } from "date-fns";
 import FocusSession from "@/models/FocusSession";
 import QuizAttempt from "@/models/QuizAttempt";
@@ -147,6 +149,7 @@ export async function POST(request: Request) {
       stats: statsData,
     });
 
+    revalidateTag(TAGS.reports(session.user.id));
     return NextResponse.json({ report }, { status: 201 });
   } catch (error) {
     console.error("Weekly report generation error:", error);

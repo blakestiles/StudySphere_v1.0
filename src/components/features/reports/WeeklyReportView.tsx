@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import TextShimmer from "@/components/ui/text-shimmer";
+import BlurFade from "@/components/ui/blur-fade";
 
 interface ReportStats {
   studyMinutes: number;
@@ -138,7 +142,7 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
     return (
       <div className="space-y-4">
         {/* Summary */}
-        <p className="text-sm text-foreground leading-relaxed">{report.summary}</p>
+        <TextGenerateEffect words={report.summary} className="text-white/70 text-sm leading-relaxed" />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -149,13 +153,10 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
             { label: "Cards", value: report.stats.cardsReviewed },
             { label: "Essays", value: report.stats.essaysWritten },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-lg border border-border bg-muted/50 p-3 text-center"
-            >
-              <p className="text-lg font-bold text-foreground">{s.value}</p>
-              <p className="text-[10px] text-muted-foreground">{s.label}</p>
-            </div>
+              <div key={s.label} className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+                <p className="text-lg font-bold text-foreground">{s.value}</p>
+                <p className="text-[10px] text-muted-foreground">{s.label}</p>
+              </div>
           ))}
         </div>
 
@@ -165,15 +166,15 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
           <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircleIcon className="h-4 w-4 text-green-500" />
-              <h4 className="text-sm font-semibold text-green-700 dark:text-green-400">
-                Strengths
-              </h4>
+              <TextShimmer className="text-lg font-semibold text-white mb-3">Strengths</TextShimmer>
             </div>
             <ul className="space-y-1">
               {report.strengths.map((s, i) => (
-                <li key={i} className="text-xs text-foreground">
-                  {s}
-                </li>
+                <BlurFade key={i} delay={i * 0.08}>
+                  <li className="text-xs text-foreground">
+                    {s}
+                  </li>
+                </BlurFade>
               ))}
             </ul>
           </div>
@@ -182,15 +183,15 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
           <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertCircleIcon className="h-4 w-4 text-red-500" />
-              <h4 className="text-sm font-semibold text-red-700 dark:text-red-400">
-                Weaknesses
-              </h4>
+              <TextShimmer className="text-lg font-semibold text-white mb-3">Weaknesses</TextShimmer>
             </div>
             <ul className="space-y-1">
               {report.weaknesses.map((w, i) => (
-                <li key={i} className="text-xs text-foreground">
-                  {w}
-                </li>
+                <BlurFade key={i} delay={i * 0.08}>
+                  <li className="text-xs text-foreground">
+                    {w}
+                  </li>
+                </BlurFade>
               ))}
             </ul>
           </div>
@@ -199,15 +200,15 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
           <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
             <div className="flex items-center gap-2 mb-2">
               <LightbulbIcon className="h-4 w-4 text-blue-500" />
-              <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                Recommendations
-              </h4>
+              <TextShimmer className="text-lg font-semibold text-white mb-3">Recommendations</TextShimmer>
             </div>
             <ul className="space-y-1">
               {report.recommendations.map((r, i) => (
-                <li key={i} className="text-xs text-foreground">
-                  {r}
-                </li>
+                <BlurFade key={i} delay={i * 0.08}>
+                  <li className="text-xs text-foreground">
+                    {r}
+                  </li>
+                </BlurFade>
               ))}
             </ul>
           </div>
@@ -219,23 +220,13 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
   return (
     <div className="space-y-6">
       {/* Generate Button */}
-      <button
+      <AnimatedGenerateButton
+        isLoading={isGenerating}
+        idleLabel="Generate Weekly Report"
+        loadingLabel="Analyzing your week..."
         onClick={handleGenerate}
-        disabled={isGenerating}
-        className="w-full sm:w-auto px-6 py-3 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium text-sm hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2"
-      >
-        {isGenerating ? (
-          <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            Generating Report...
-          </>
-        ) : (
-          <>
-            <SparklesIcon className="h-4 w-4" />
-            Generate This Week&apos;s Report
-          </>
-        )}
-      </button>
+        className="px-6 py-3"
+      />
 
       {/* Latest Report */}
       {latestReport && (
@@ -252,35 +243,34 @@ export default function WeeklyReportView({ initialReports }: WeeklyReportViewPro
       {pastReports.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground">Past Reports</h3>
-          {pastReports.map((report) => (
-            <div
-              key={report._id}
-              className="rounded-lg border border-border bg-card overflow-hidden"
-            >
-              <button
-                onClick={() =>
-                  setExpandedId(expandedId === report._id ? null : report._id)
-                }
-                className="w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition"
-              >
-                <ChevronRightIcon
-                  className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${
-                    expandedId === report._id ? "rotate-90" : ""
-                  }`}
-                />
-                <span className="text-sm font-medium text-foreground flex-1">
-                  {formatDateRange(report.weekStart, report.weekEnd)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {report.stats.studyMinutes} min studied
-                </span>
-              </button>
-              {expandedId === report._id && (
-                <div className="px-4 pb-4 border-t border-border pt-3">
-                  {renderReport(report)}
+          {pastReports.map((report, index) => (
+            <BlurFade key={report._id} delay={index * 0.05}>
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                  <button
+                    onClick={() =>
+                      setExpandedId(expandedId === report._id ? null : report._id)
+                    }
+                    className="w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-muted/50 transition"
+                  >
+                    <ChevronRightIcon
+                      className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${
+                        expandedId === report._id ? "rotate-90" : ""
+                      }`}
+                    />
+                    <span className="text-sm font-medium text-foreground flex-1">
+                      {formatDateRange(report.weekStart, report.weekEnd)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {report.stats.studyMinutes} min studied
+                    </span>
+                  </button>
+                  {expandedId === report._id && (
+                    <div className="px-4 pb-4 border-t border-border pt-3">
+                      {renderReport(report)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+            </BlurFade>
           ))}
         </div>
       )}

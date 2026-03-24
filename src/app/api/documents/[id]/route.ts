@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
+import { TAGS } from "@/lib/data-cache";
 import Document from "@/models/Document";
 import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
@@ -75,6 +77,8 @@ export async function DELETE(
 
     await Document.findByIdAndDelete(id);
 
+    revalidateTag(TAGS.documents(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({ message: "Document deleted" });
   } catch (error) {
     console.error("Document DELETE error:", error);

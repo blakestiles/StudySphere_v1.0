@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Trash2, FileText, FileType } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import BlurFade from "@/components/ui/blur-fade";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import GenerateButton from "@/components/features/study-packs/GenerateButton";
@@ -76,8 +77,8 @@ export default function RecentDocuments({
     <div className="space-y-1.5">
       <AnimatePresence>
         {documents.map((doc, index) => (
+          <BlurFade key={doc._id} delay={0.1 * index}>
           <motion.div
-            key={doc._id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -158,6 +159,7 @@ export default function RecentDocuments({
               </AlertDialog>
             </div>
           </motion.div>
+          </BlurFade>
         ))}
       </AnimatePresence>
     </div>
