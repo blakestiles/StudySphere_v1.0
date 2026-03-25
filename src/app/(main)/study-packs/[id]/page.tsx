@@ -43,6 +43,8 @@ export default async function StudyPackPage({
     status: studyPack.status as "generating" | "ready" | "error",
     createdAt: new Date(studyPack.createdAt).toISOString(),
     mindMap: (studyPack as any).mindMap || null,
+    shareToken: (studyPack as any).shareToken ?? null,
+    isPublic: (studyPack as any).isPublic ?? false,
   };
 
   const serializedTopics = topics.map((t) => ({

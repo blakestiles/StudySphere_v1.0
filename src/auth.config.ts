@@ -14,7 +14,8 @@ export const authConfig: NextAuthConfig = {
         "/exam-simulator", "/notebooks", "/goals",
         "/audio-study", "/weekly-report",
       ];
-      const isProtected = protectedPrefixes.some((p) => nextUrl.pathname.startsWith(p));
+      const isProtected = protectedPrefixes.some((p) => nextUrl.pathname.startsWith(p))
+        && !nextUrl.pathname.startsWith("/study-packs/share");
 
       if (isProtected) {
         if (isLoggedIn) return true;
