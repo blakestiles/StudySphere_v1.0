@@ -18,7 +18,7 @@ export function useReadyStudyPacks(): StudyPackOption[] {
             .map((sp: any) => ({ _id: String(sp._id), title: String(sp.title) }))
         );
       })
-      .catch(() => {});
+      .catch((err) => console.error("Failed to fetch study packs:", err));
   }, []);
 
   return packs;

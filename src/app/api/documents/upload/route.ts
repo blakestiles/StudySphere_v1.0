@@ -37,6 +37,12 @@ export async function POST(request: Request) {
       }
 
       const buffer = Buffer.from(await file.arrayBuffer());
+
+      // Validate PDF magic bytes — file.type is client-provided and spoofable
+      if (!buffer.slice(0, 5).toString("ascii").startsWith("%PDF-")) {
+        return NextResponse.json({ error: "File does not appear to be a valid PDF" }, { status: 400 });
+      }
+
       const rawText = await extractTextFromPDF(buffer);
 
       if (!rawText || rawText.trim().length === 0) {
@@ -70,6 +76,11 @@ export async function POST(request: Request) {
 
       if (content.length < 10) {
         return NextResponse.json({ error: "Content must be at least 10 characters" }, { status: 400 });
+      }
+
+      const MAX_TEXT_SIZE = 500_000; // ~500KB of plain text
+      if (content.length > MAX_TEXT_SIZE) {
+        return NextResponse.json({ error: "Content too large. Maximum 500,000 characters" }, { status: 400 });
       }
 
       const doc = await Document.create({

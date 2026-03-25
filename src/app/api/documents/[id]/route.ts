@@ -63,7 +63,7 @@ export async function DELETE(
     }
 
     // Find related study packs to cascade delete their children
-    const studyPacks = await StudyPack.find({ documentId: id }).select("_id");
+    const studyPacks = await StudyPack.find({ documentId: id, userId: session.user.id }).select("_id");
     const studyPackIds = studyPacks.map((sp: { _id: unknown }) => sp._id);
 
     if (studyPackIds.length > 0) {
@@ -72,7 +72,7 @@ export async function DELETE(
         Flashcard.deleteMany({ studyPackId: { $in: studyPackIds } }),
         QuizQuestion.deleteMany({ studyPackId: { $in: studyPackIds } }),
       ]);
-      await StudyPack.deleteMany({ documentId: id });
+      await StudyPack.deleteMany({ documentId: id, userId: session.user.id });
     }
 
     await Document.findByIdAndDelete(id);

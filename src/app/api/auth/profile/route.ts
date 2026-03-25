@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
+import { z } from "zod/v4";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { TAGS } from "@/lib/data-cache";
+
+const profilePatchSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  bio: z.string().max(500).optional(),
+});
 
 export async function GET() {
   try {
@@ -39,7 +45,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, bio } = await request.json();
+    const body = await request.json();
+    const result = profilePatchSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: "Invalid input", details: result.error.issues }, { status: 400 });
+    }
+    const { name, bio } = result.data;
 
     await connectDB();
     const user = await User.findByIdAndUpdate(

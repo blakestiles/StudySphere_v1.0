@@ -44,10 +44,17 @@ export async function PATCH(
       const message = await client.messages.create({
         model: "claude-sonnet-4-20250514",
         max_tokens: 300,
+        system: "You are a motivational academic coach. Given a student's study goal data, provide a brief, motivational 2-3 sentence suggestion for how to achieve it. Respond with only the suggestion text.",
         messages: [
           {
             role: "user",
-            content: `This student has a goal: "${goal.title}". Target: ${goal.targetValue} ${goal.targetType.replace(/_/g, " ")}. Current progress: ${goal.currentValue}. ${deadlineStr}. Provide a brief, motivational 2-3 sentence suggestion for how to achieve this goal.`,
+            content: JSON.stringify({
+              title: goal.title,
+              targetValue: goal.targetValue,
+              targetType: goal.targetType,
+              currentValue: goal.currentValue,
+              deadline: deadlineStr,
+            }),
           },
         ],
       });

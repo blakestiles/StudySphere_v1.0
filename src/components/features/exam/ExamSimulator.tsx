@@ -92,6 +92,7 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
   const [fullscreenWarning, setFullscreenWarning] = useState(false);
   const [tabWarning, setTabWarning] = useState(false);
   const tabViolationCount = useRef(0);
+  const isSubmittingRef = useRef(false);
 
   // Complete state
   const [examResult, setExamResult] = useState<{
@@ -110,6 +111,8 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
   };
 
   const submitExam = useCallback(async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     if (timerRef.current) clearInterval(timerRef.current);
 
     // Record time for current question

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
           userId,
           completedAt: { $gte: weekStart, $lte: weekEnd },
         }).lean(),
-        WeakArea.find({ userId }).populate("topicId").lean(),
+        WeakArea.find({ userId }).populate("topicId").limit(5).lean(),
       ]);
 
     // Calculate stats
@@ -88,9 +88,8 @@ export async function POST(request: Request) {
     const weakAreaNames = weakAreas
       .map((w) => {
         const topic = w.topicId as { name?: string } | null;
-        return topic?.name || "Unknown";
-      })
-      .slice(0, 5);
+        return topic?.name ?? "Unknown";
+      });
 
     const statsData = {
       studyMinutes,
@@ -130,13 +129,17 @@ export async function POST(request: Request) {
 
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return NextResponse.json(
-        { error: "Failed to parse report" },
-        { status: 500 }
-      );
+      console.error("No JSON found in Claude response:", responseText);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 
-    const analysis = JSON.parse(jsonMatch[0]);
+    let analysis: { summary?: string; strengths?: string[]; weaknesses?: string[]; recommendations?: string[] };
+    try {
+      analysis = JSON.parse(jsonMatch[0]);
+    } catch {
+      console.error("Failed to parse Claude response as JSON:", responseText);
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
 
     const report = await WeeklyReport.create({
       userId,
@@ -153,8 +156,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ report }, { status: 201 });
   } catch (error) {
     console.error("Weekly report generation error:", error);
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
