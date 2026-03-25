@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import {
@@ -11,6 +11,11 @@ import {
   ClipboardList,
   PenLine,
   Shuffle,
+  Share2,
+  Download,
+  Copy,
+  Check,
+  X,
 } from "lucide-react";
 
 function TabSkeleton() {
@@ -44,6 +49,8 @@ interface SerializedStudyPack {
   status: "generating" | "ready" | "error";
   createdAt: string;
   mindMap?: MindMapNode | null;
+  shareToken?: string | null;
+  isPublic?: boolean;
 }
 
 interface SerializedTopic {
@@ -247,6 +254,62 @@ export default function StudyPackDetail({
 }: StudyPackDetailProps) {
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
 
+  // Share state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(studyPack.shareToken ?? null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Export dropdown state
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleCreateShare() {
+    setIsSharing(true);
+    try {
+      const res = await fetch(`/api/study-packs/${studyPack._id}/share`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setShareToken(data.shareToken);
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
+  async function handleDisableShare() {
+    setIsSharing(true);
+    try {
+      await fetch(`/api/study-packs/${studyPack._id}/share`, { method: "DELETE" });
+      setShareToken(null);
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
+  function handleCopy() {
+    if (!shareToken) return;
+    const url = `${window.location.origin}/study-packs/share/${shareToken}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function handleExport(format: "csv" | "text") {
+    setExportOpen(false);
+    window.open(`/api/study-packs/${studyPack._id}/export?format=${format}`, "_blank");
+  }
+
   // ── Generating state ───────────────────────────────
 
   if (studyPack.status === "generating") {
@@ -320,7 +383,47 @@ export default function StudyPackDetail({
     <div className="space-y-6">
       {/* ── Header ──────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{studyPack.title}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-bold text-foreground">{studyPack.title}</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Export dropdown */}
+            <div className="relative" ref={exportRef}>
+              <button
+                onClick={() => setExportOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </button>
+              {exportOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                  <button
+                    onClick={() => handleExport("csv")}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport("text")}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    Export as Text
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Share button */}
+            <button
+              onClick={() => setShareDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white hover:bg-orange-600 transition-colors"
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </button>
+          </div>
+        </div>
+
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-500 border border-green-500/20">
             <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
@@ -339,6 +442,69 @@ export default function StudyPackDetail({
           )}
         </div>
       </div>
+
+      {/* ── Share Dialog ────────────────────────────── */}
+      {shareDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShareDialogOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Share Study Pack</h2>
+              <button
+                onClick={() => setShareDialogOpen(false)}
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted/50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {!shareToken ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Create a shareable link so anyone can view this study pack.
+                </p>
+                <button
+                  onClick={handleCreateShare}
+                  disabled={isSharing}
+                  className="w-full rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60 transition-colors"
+                >
+                  {isSharing ? "Creating link..." : "Create share link"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Anyone with this link can view the study pack.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/study-packs/share/${shareToken}`}
+                    className="flex-1 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-foreground outline-none"
+                  />
+                  <button
+                    onClick={handleCopy}
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <button
+                  onClick={handleDisableShare}
+                  disabled={isSharing}
+                  className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-500/20 disabled:opacity-60 transition-colors"
+                >
+                  {isSharing ? "Disabling..." : "Disable sharing"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Animated Tabs ───────────────────────────── */}
       <AnimatedTabs

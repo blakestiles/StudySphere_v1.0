@@ -11,6 +11,8 @@ const StudyPackSchema = new Schema(
     },
     mindMap: { type: Schema.Types.Mixed, default: null }, // JSON mind map structure
     status: { type: String, enum: ["generating", "ready", "error"], default: "generating" },
+    shareToken: { type: String, unique: true, sparse: true },
+    isPublic: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
