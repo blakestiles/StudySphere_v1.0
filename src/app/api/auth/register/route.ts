@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -38,6 +40,16 @@ export async function POST(request: Request) {
       email,
       password: hashedPassword,
     });
+
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    await User.findByIdAndUpdate(user._id, { emailVerificationToken: verificationToken });
+
+    try {
+      const verifyUrl = `${process.env.AUTH_URL}/verify-email?token=${verificationToken}`;
+      await sendVerificationEmail(email, verifyUrl);
+    } catch (err) {
+      console.error("Failed to send verification email:", err);
+    }
 
     return NextResponse.json(
       { message: "User created successfully", userId: user._id },
