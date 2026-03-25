@@ -242,6 +242,11 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
   const [saving, setSaving] = useState(false);
   const { update } = useSession();
 
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const achievements = getAchievements(stats, user);
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
@@ -265,6 +270,39 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
       toast.error("Something went wrong");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      toast.error("New passwords don't match");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to change password");
+        return;
+      }
+      toast.success("Password updated successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -446,6 +484,67 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
                 </div>
             </BlurFade>
           ))}
+        </div>
+      </section>
+
+      {/* ── Security ────────────────────────────────── */}
+      <section>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Security</h2>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+              <LockIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Change Password</p>
+              <p className="text-xs text-muted-foreground">Update your account password</p>
+            </div>
+          </div>
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="currentPassword" className="text-sm">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                placeholder="••••••••"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="h-10 bg-background/50 border-border/60 rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="newPassword" className="text-sm">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                className="h-10 bg-background/50 border-border/60 rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirmNewPassword" className="text-sm">Confirm New Password</Label>
+              <Input
+                id="confirmNewPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                required
+                className="h-10 bg-background/50 border-border/60 rounded-xl"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={changingPassword}
+              className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 transition-all duration-200 hover:bg-amber-500/20 hover:border-amber-500/50 active:scale-[0.98] disabled:opacity-50"
+            >
+              {changingPassword ? "Updating..." : "Update Password"}
+            </button>
+          </form>
         </div>
       </section>
     </div>
