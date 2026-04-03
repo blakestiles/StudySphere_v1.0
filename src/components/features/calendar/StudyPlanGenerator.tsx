@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  CalendarDays, Clock, Leaf, Scale, Flame, Sunrise, Sun, Moon,
+  Sparkles, Zap, Check, Loader2, BookOpen, PenLine, CalendarCheck2,
+} from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
 import DatePicker from "@/components/ui/date-picker";
 
@@ -14,96 +19,69 @@ interface StudyPlanGeneratorProps {
   studyPacks: StudyPackOption[];
 }
 
-// ── Icons ──────────────────────────────────────────────
-
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
-    </svg>
-  );
-}
-
-function ClockIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function LeafIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89-.82C8 15 11 12 17 8z" />
-      <path d="M17 8c2-1 3.5-.5 5 1-2 2.5-3.5 3-5 2.5" />
-    </svg>
-  );
-}
-
-function ScaleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M12 3v18M3 12l4-4 4 4M13 8l4-4 4 4M3 16l4 4 4-4M13 20l4-4 4 4" />
-    </svg>
-  );
-}
-
-function FlameIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M12 2c.5 4-2 6-2 10a4 4 0 008 0c0-4-2.5-6-2-10M12 12a2 2 0 00-2 2c0 1.1.9 2 2 2s2-.9 2-2a2 2 0 00-2-2z" />
-    </svg>
-  );
-}
-
-function SunriseIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M12 2v4M4.93 10.93l2.83 2.83M2 18h2M20 18h2M16.24 13.76l2.83-2.83M18 22H6M12 18a6 6 0 000-12" />
-    </svg>
-  );
-}
-
-function SunIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx="12" cy="12" r="5" />
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-    </svg>
-  );
-}
-
-function MoonIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-      <path d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
-
 // ── Config ─────────────────────────────────────────────
 
 const INTENSITY_OPTIONS = [
-  { value: "relaxed" as const, label: "Relaxed", desc: "Slow, steady pace for long-term retention", icon: LeafIcon, color: "#4ade80" },
-  { value: "balanced" as const, label: "Balanced", desc: "Moderate workload for consistent progress", icon: ScaleIcon, color: "#f97316" },
-  { value: "intense" as const, label: "Intense", desc: "Maximum coverage before deadline", icon: FlameIcon, color: "#ef4444" },
+  {
+    value: "relaxed" as const,
+    label: "Relaxed",
+    desc: "Slow, steady pace for long-term retention",
+    icon: Leaf,
+    activeCard: "border-emerald-500/30 bg-emerald-500/[0.07]",
+    activeIcon: "bg-emerald-500/12 border-emerald-500/20 text-emerald-500",
+    activeLabel: "text-emerald-600 dark:text-emerald-400",
+    dotColor: "bg-emerald-500",
+  },
+  {
+    value: "balanced" as const,
+    label: "Balanced",
+    desc: "Moderate workload for consistent progress",
+    icon: Scale,
+    activeCard: "border-amber-500/30 bg-amber-500/[0.07]",
+    activeIcon: "bg-amber-500/12 border-amber-500/20 text-amber-500",
+    activeLabel: "text-amber-600 dark:text-amber-400",
+    dotColor: "bg-amber-500",
+  },
+  {
+    value: "intense" as const,
+    label: "Intense",
+    desc: "Maximum coverage before deadline",
+    icon: Flame,
+    activeCard: "border-red-500/30 bg-red-500/[0.07]",
+    activeIcon: "bg-red-500/12 border-red-500/20 text-red-500",
+    activeLabel: "text-red-600 dark:text-red-400",
+    dotColor: "bg-red-500",
+  },
 ];
 
 const TIME_OPTIONS = [
-  { value: "morning" as const, label: "Morning", desc: "6 AM - 12 PM", icon: SunriseIcon, color: "#fbbf24" },
-  { value: "afternoon" as const, label: "Afternoon", desc: "12 PM - 6 PM", icon: SunIcon, color: "#f97316" },
-  { value: "evening" as const, label: "Evening", desc: "6 PM - 12 PM", icon: MoonIcon, color: "#818cf8" },
+  {
+    value: "morning" as const,
+    label: "Morning",
+    desc: "6 AM – 12 PM",
+    icon: Sunrise,
+    activeCard: "border-yellow-500/30 bg-yellow-500/[0.07]",
+    activeIcon: "bg-yellow-500/12 border-yellow-500/20 text-yellow-500",
+    activeLabel: "text-yellow-600 dark:text-yellow-400",
+  },
+  {
+    value: "afternoon" as const,
+    label: "Afternoon",
+    desc: "12 PM – 6 PM",
+    icon: Sun,
+    activeCard: "border-orange-500/30 bg-orange-500/[0.07]",
+    activeIcon: "bg-orange-500/12 border-orange-500/20 text-orange-500",
+    activeLabel: "text-orange-600 dark:text-orange-400",
+  },
+  {
+    value: "evening" as const,
+    label: "Evening",
+    desc: "6 PM – 12 AM",
+    icon: Moon,
+    activeCard: "border-violet-500/30 bg-violet-500/[0.07]",
+    activeIcon: "bg-violet-500/12 border-violet-500/20 text-violet-500",
+    activeLabel: "text-violet-600 dark:text-violet-400",
+  },
 ];
 
 const DAILY_TIME_OPTIONS = [
@@ -113,6 +91,19 @@ const DAILY_TIME_OPTIONS = [
   { value: "120", label: "2 Hours" },
   { value: "180", label: "3 Hours" },
 ];
+
+// ── Sub-components ─────────────────────────────────────
+
+function SectionLabel({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-3.5">
+      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10 border border-amber-500/20">
+        <Icon className="h-3.5 w-3.5 text-amber-500" />
+      </div>
+      <span className="text-[13px] font-semibold text-foreground">{label}</span>
+    </div>
+  );
+}
 
 // ── Component ──────────────────────────────────────────
 
@@ -178,23 +169,55 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
 
   if (studyPacks.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card py-12 text-center">
-        <p className="text-sm text-muted-foreground">
-          No study packs available. Generate a study pack first to create an AI study plan.
-        </p>
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card py-14 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <BookOpen className="h-6 w-6 text-amber-500" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">No study packs yet</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">Generate a study pack first to create an AI study plan.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* ── Exam Date + Daily Study Time ────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-orange-400" />
-            <span className="text-sm font-medium text-foreground">Exam Date *</span>
+    <div className="max-w-2xl mx-auto space-y-4">
+      {/* ── Intro hero card ────────────────────────────── */}
+      <div className="relative rounded-2xl border border-amber-500/20 bg-card overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.05] via-transparent to-orange-500/[0.03] pointer-events-none" />
+        <div className="relative p-5 flex items-start gap-4">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-xl bg-amber-500/20 blur-lg" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/25">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+            </div>
           </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[13.5px] font-semibold text-foreground">AI Study Plan Generator</h2>
+            <p className="text-[11.5px] text-muted-foreground/70 mt-0.5 leading-relaxed">
+              Configure your goals and we'll build a day-by-day schedule, automatically added to your calendar.
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {[
+                { icon: CalendarCheck2, label: "Synced to Calendar" },
+                { icon: Zap, label: "AI-Powered" },
+                { icon: PenLine, label: "Customizable" },
+              ].map(({ icon: Icon, label }) => (
+                <span key={label} className="flex items-center gap-1 text-[10.5px] text-muted-foreground/60 bg-muted/40 border border-border/40 rounded-md px-2 py-0.5">
+                  <Icon className="h-3 w-3" />{label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Exam date + Daily time ─────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <SectionLabel icon={CalendarDays} label="Exam Date *" />
           <DatePicker
             value={targetDate}
             onChange={setTargetDate}
@@ -202,12 +225,8 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
             placeholder="Select exam date..."
           />
         </div>
-
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <ClockIcon className="h-4 w-4 text-orange-400" />
-            <span className="text-sm font-medium text-foreground">Daily Study Time</span>
-          </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <SectionLabel icon={Clock} label="Daily Study Time" />
           <CustomSelect
             value={dailyTime}
             onValueChange={setDailyTime}
@@ -216,13 +235,10 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
         </div>
       </div>
 
-      {/* ── Study Intensity ─────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-orange-400">&#9733;</span>
-          <span className="text-sm font-medium text-foreground">Study Intensity</span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+      {/* ── Study Intensity ────────────────────────────── */}
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <SectionLabel icon={Flame} label="Study Intensity" />
+        <div className="grid gap-2.5 sm:grid-cols-3">
           {INTENSITY_OPTIONS.map((opt) => {
             const isSelected = intensity === opt.value;
             const Icon = opt.icon;
@@ -230,38 +246,29 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
               <button
                 key={opt.value}
                 onClick={() => setIntensity(opt.value)}
-                className={`flex flex-col items-center rounded-xl border px-4 py-5 text-center transition-all ${
-                  isSelected
-                    ? "border-orange-500/50 bg-orange-500/10"
-                    : "border-border bg-muted/40"
+                className={`flex flex-col items-center rounded-xl border px-4 py-4 text-center transition-all ${
+                  isSelected ? opt.activeCard : "border-border/50 bg-muted/30 hover:bg-muted/50"
                 }`}
               >
-                <div
-                  className={`mb-2.5 flex h-10 w-10 items-center justify-center rounded-lg ${!isSelected ? "bg-muted text-muted-foreground" : ""}`}
-                  style={isSelected ? {
-                    backgroundColor: `${opt.color}20`,
-                    color: opt.color,
-                  } : undefined}
-                >
-                  <Icon className="h-5 w-5" />
+                <div className={`mb-2.5 flex h-9 w-9 items-center justify-center rounded-lg border ${
+                  isSelected ? opt.activeIcon : "bg-muted/60 border-border/40 text-muted-foreground"
+                }`}>
+                  <Icon className="h-4.5 w-4.5" />
                 </div>
-                <p className={`text-sm font-semibold ${isSelected ? "text-foreground" : "text-foreground"}`}>
+                <p className={`text-[12.5px] font-semibold ${isSelected ? opt.activeLabel : "text-foreground/80"}`}>
                   {opt.label}
                 </p>
-                <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                <p className="mt-0.5 text-[10.5px] leading-snug text-muted-foreground/60">{opt.desc}</p>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Preferred Study Time ────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <ClockIcon className="h-4 w-4 text-orange-400" />
-          <span className="text-sm font-medium text-foreground">Preferred Study Time</span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+      {/* ── Preferred Study Time ───────────────────────── */}
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <SectionLabel icon={Clock} label="Preferred Study Time" />
+        <div className="grid gap-2.5 sm:grid-cols-3">
           {TIME_OPTIONS.map((opt) => {
             const isSelected = preferredTime === opt.value;
             const Icon = opt.icon;
@@ -269,119 +276,113 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
               <button
                 key={opt.value}
                 onClick={() => setPreferredTime(opt.value)}
-                className={`flex flex-col items-center rounded-xl border px-4 py-5 text-center transition-all ${
-                  isSelected
-                    ? "border-orange-500/50 bg-orange-500/10"
-                    : "border-border bg-muted/40"
+                className={`flex flex-col items-center rounded-xl border px-4 py-4 text-center transition-all ${
+                  isSelected ? opt.activeCard : "border-border/50 bg-muted/30 hover:bg-muted/50"
                 }`}
               >
-                <div
-                  className={`mb-2.5 flex h-10 w-10 items-center justify-center rounded-lg ${!isSelected ? "bg-muted text-muted-foreground" : ""}`}
-                  style={isSelected ? {
-                    backgroundColor: `${opt.color}20`,
-                    color: opt.color,
-                  } : undefined}
-                >
-                  <Icon className="h-5 w-5" />
+                <div className={`mb-2.5 flex h-9 w-9 items-center justify-center rounded-lg border ${
+                  isSelected ? opt.activeIcon : "bg-muted/60 border-border/40 text-muted-foreground"
+                }`}>
+                  <Icon className="h-4.5 w-4.5" />
                 </div>
-                <p className={`text-sm font-semibold ${isSelected ? "text-foreground" : "text-foreground"}`}>
+                <p className={`text-[12.5px] font-semibold ${isSelected ? opt.activeLabel : "text-foreground/80"}`}>
                   {opt.label}
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{opt.desc}</p>
+                <p className="mt-0.5 text-[10.5px] text-muted-foreground/60">{opt.desc}</p>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Study Packs to Include ──────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <svg className="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
-          <span className="text-sm font-medium text-foreground">Study Packs to Include *</span>
+      {/* ── Study Packs ────────────────────────────────── */}
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <div className="flex items-center justify-between mb-3.5">
+          <SectionLabel icon={BookOpen} label="Study Packs to Include *" />
+          <span className="text-[11px] text-muted-foreground/50 -mt-3.5">
+            {selectedPacks.size}/{studyPacks.length} selected
+          </span>
         </div>
-        <div className="space-y-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           {studyPacks.map((sp) => {
             const isSelected = selectedPacks.has(sp._id);
             return (
               <button
                 key={sp._id}
                 onClick={() => togglePack(sp._id)}
-                className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-all ${
+                className={`flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all ${
                   isSelected
-                    ? "border-orange-500/50 bg-orange-500/10"
-                    : "border-border bg-muted/40"
+                    ? "border-amber-500/30 bg-amber-500/[0.07]"
+                    : "border-border/50 bg-muted/30 hover:bg-muted/50"
                 }`}
               >
-                <div
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                    isSelected
-                      ? "border-orange-500 bg-orange-500"
-                      : "border-border bg-transparent"
-                  }`}
-                >
-                  {isSelected && <CheckIcon className="h-3 w-3 text-white" />}
+                <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
+                  isSelected
+                    ? "border-amber-500 bg-amber-500"
+                    : "border-border/60 bg-transparent"
+                }`}>
+                  {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
                 </div>
-                <span className={`text-sm ${isSelected ? "font-medium text-foreground" : "text-foreground"}`}>
-                  {sp.title}
-                </span>
+                <span className="text-[12.5px] font-medium text-foreground/80 truncate">{sp.title}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Additional Instructions ─────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <svg className="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          <span className="text-sm font-medium text-foreground">Additional Instructions (Optional)</span>
-        </div>
+      {/* ── Additional Instructions ────────────────────── */}
+      <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <SectionLabel icon={PenLine} label="Additional Instructions (Optional)" />
         <textarea
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
-          placeholder="E.g., Focus more on weak areas, include practice quizzes every 3 days..."
+          placeholder="E.g., Focus more on weak areas, include practice quizzes every 3 days…"
           rows={3}
-          className="w-full resize-none rounded-lg border border-border bg-muted/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-orange-500/50"
+          className="w-full resize-none rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
         />
       </div>
 
-      {/* ── Generate Button ─────────────────────────────── */}
+      {/* ── Generate button ────────────────────────────── */}
       <button
         onClick={handleGenerate}
         disabled={generating || selectedPacks.size === 0 || !targetDate}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition-all hover:shadow-orange-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-6 py-3 text-[13.5px] font-semibold text-white shadow-[0_2px_16px_oklch(0.76_0.17_62_/_28%)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
       >
         {generating ? (
-          <>
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            Generating Study Plan...
-          </>
+          <><Loader2 className="h-4 w-4 animate-spin" /> Generating Study Plan…</>
         ) : (
-          <>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Generate AI Study Plan
-          </>
+          <><Zap className="h-4 w-4" /> Generate AI Study Plan</>
         )}
       </button>
 
-      {/* ── Result ──────────────────────────────────────── */}
-      {result && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
-          <p className="text-sm font-semibold text-emerald-400">
-            Study plan created with {result.count} study sessions!
-          </p>
-          <p className="mt-1 text-xs text-emerald-500/70">
-            View your plan on the Calendar page. Previous AI-generated events were replaced.
-          </p>
-        </div>
-      )}
+      {/* ── Result ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {result && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-card p-5"
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-green-400 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.06] via-transparent to-transparent pointer-events-none" />
+            <div className="relative flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/12 border border-emerald-500/25">
+                <CalendarCheck2 className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Plan created — {result.count} study sessions added!
+                </p>
+                <p className="mt-0.5 text-[11.5px] text-muted-foreground/60">
+                  View your schedule on the Calendar page. Previous AI events were replaced.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

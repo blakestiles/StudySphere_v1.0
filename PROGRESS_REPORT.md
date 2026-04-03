@@ -3,7 +3,7 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** March 18, 2026
+**Date:** April 2, 2026
 
 ---
 
@@ -928,21 +928,118 @@ Six new Mongoose models were added to support the expanded features:
 
 ---
 
-## Remaining Work (Weeks 11-13)
+## Week 11: UI Redesign Sprint, Knowledge Graph Enhancements & Profile Overhaul (Completed Apr. 2, 2026)
 
-### Weeks 11-12: Testing & Refinement
-- Unit and integration testing for all 42 API routes
-- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → exam → matching game tab → fill-in-blank tab → analytics → weekly report)
+With all features implemented, this phase focused on establishing a consistent, production-quality design system across every page and adding meaningful new functionality to the Knowledge Graph and Profile sections.
+
+### 1. Design System Standardization
+
+#### 1.1 Dark-Only Component Removal
+All third-party components that only worked correctly in dark mode were identified and replaced across all 24 pages:
+
+| Removed | Replaced With |
+|---------|--------------|
+| `SparklesText` | Plain `<h1>` or `TextShimmer` |
+| `ShineBorder` | `border border-amber-500/20` card with amber top bar |
+| `Meteors` | Amber gradient background wash |
+| `GlowingStarsBackgroundCard` | Stat cards with colored `h-[2px]` top bar gradients |
+| `AnimatedGenerateButton` | Amber gradient `<button>` with `Loader2` spinner |
+| `BlurFade` | `motion.div` with `initial/animate` opacity + y stagger |
+| `ShimmerButton` / `SlideButton` | Amber gradient `<button>` |
+| `TextGenerateEffect` | Plain text with amber accent |
+| `DisplayCards` | Amber accent card with feature chips |
+
+#### 1.2 Unified Amber Design Language
+Applied consistently across all pages:
+- **Card shell:** `rounded-2xl border border-border/60 bg-card`
+- **Accent top bar:** `h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent`
+- **Primary buttons:** `bg-gradient-to-br from-amber-500 to-orange-500` with `shadow-[0_2px_10px_oklch(0.76_0.17_62_/_25%)]`
+- **Icons:** Lucide React throughout — no custom SVG components
+- **Theme-aware colors:** Always paired (e.g., `text-emerald-600 dark:text-emerald-400`)
+- **Animations:** `motion/react` — stagger delays, `AnimatePresence` for state transitions
+- **Inputs:** Native `<input>`/`<textarea>` with `focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10`
+
+#### 1.3 Pages Redesigned
+Analytics, Calendar, Study Plan, Weekly Report, History, Notebooks, Goals, Knowledge Graph, Profile — all now use the unified design system.
+
+### 2. Knowledge Graph Enhancements
+
+#### 2.1 Mastery Overlay
+- New `Mastery` toggle button added to the graph toolbar
+- On first activation, fetches `/api/history` to retrieve quiz attempt data
+- Builds a title → packId reverse map from loaded pack data to match history entries to packs
+- Computes per-pack average quiz score from all historical attempts
+- Re-colors all canvas nodes: green (≥80% avg), yellow (60–79%), red (<60%), gray (no attempts)
+- Canvas draw loop reads `masteryModeRef` and `packMasteryRef` to determine node color at render time
+- Mastery legend card appears in the sidebar panel while overlay is active
+
+#### 2.2 Graph Insights Panel
+- Computed automatically after graph data loads — no extra fetch required
+- Computes node degree (connection count) for all nodes to identify the most-connected hub topic
+- Counts topics with at least one cross-pack connection to report bridge count
+- Counts isolated topics (topics with zero cross-pack links)
+- Displayed in a new `Insights` card that replaces the Tips card when no node is selected:
+  - **Most Connected:** clickable card showing the hub topic name, degree count, and pack — clicking pans and selects the node on the canvas
+  - **Bridges / Isolated:** 2-column chip grid; amber warning shown if isolated count > 0
+
+#### 2.3 Quick Study Actions
+- Added a "Quick Study" section to the node detail panel (shown when a node is selected)
+- "Flashcards" and "Take Quiz" buttons link to the study pack page
+- "Open Study Pack" button updated with `ArrowRight` icon for visual clarity
+- When Mastery overlay is active and a node is selected, a per-pack mastery progress bar is shown in the panel
+
+### 3. Profile Page Overhaul
+
+#### 3.1 Profile Header
+- Replaced `ShineBorder` + `Meteors` + `SparklesText` with an amber-accented card
+- Avatar is a `rounded-2xl` amber-orange gradient square with an emerald "online" dot indicator
+- View mode shows name, email, bio, member-since chip, and active-streak badge inline
+- Edit mode slides in with `AnimatePresence` — native inputs with amber focus rings, no shadcn `Input`/`Textarea`
+
+#### 3.2 Streak Hero Strip
+- New dedicated horizontal strip between the profile header and stats grid
+- Shows current streak (large, with orange flame icon and ambient glow), total study time, and longest streak
+- Uses orange gradient accent — replaces the dark-only `GlowingStarsBackgroundCard` that was embedded in the stats grid
+
+#### 3.3 Stats Grid Redesign
+- Reorganized from a mixed 3-column layout (with the GlowingStarsCard occupying one cell) to a clean 4-column grid
+- Each card has a color-coded `h-[2px]` top bar: blue (Documents), violet (Study Packs), emerald (Quizzes), rose (Focus Sessions)
+- `motion.div` stagger animation on each card
+
+#### 3.4 Achievements Redesign
+- Replaced emoji icons and `BlurFade` with Lucide icon badges
+- Unlocked achievements: amber `border-amber-500/25 bg-amber-500/5` background, amber icon badge, thin amber light streak at the top edge
+- Locked achievements: muted background, `Lock` icon replacing the original icon, reduced opacity
+- Grid is 3-column on mobile, 5-column on desktop
+- `motion.div` scale-in stagger animation
+
+#### 3.5 Security Section
+- Replaced shadcn `Input`/`Button` with native inputs and a styled submit button
+- Password fields in a 2-column grid on desktop
+- Slate color accent (`Shield` icon) to visually differentiate the security section from the rest of the page
+
+#### 3.6 Page-Level Updates
+- `src/app/(main)/profile/page.tsx` updated to add `TextShimmer` title and subtitle, matching all other pages in the app
+
+---
+
+## Remaining Work (Weeks 12-13)
+
+### Week 11: UI Redesign Sprint (COMPLETED Apr. 2, 2026)
+All pages redesigned with consistent amber design system. Dark-only components removed. Knowledge Graph Mastery Overlay, Insights panel, and Quick Study Actions added. Profile page fully overhauled.
+
+### Weeks 11-12: Testing & Refinement (target: Apr. 6, 2026)
+- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → exam → matching game tab → fill-in-blank tab → goals → weekly report → analytics → knowledge graph)
 - Performance optimization (database query indexing, response payload optimization)
-- UI/UX refinements based on testing feedback and usability review
+- Final bug fixes
 
-### Week 12: Deployment & Documentation
+### Week 12: Deployment & Documentation (target: Apr. 6, 2026)
 - Deploy to Vercel with production environment configuration
 - Configure production MongoDB Atlas cluster with proper access controls
 - Set up environment variables (MONGODB_URI, NEXTAUTH_SECRET, ANTHROPIC_API_KEY)
-- Write user documentation, API documentation, and project setup guide
+- Write user documentation and project setup guide
 
-### Week 13: Final Submission
+### Week 13: Final Submission (target: Apr. 6, 2026)
 - Final testing in production environment
 - Project presentation preparation
 - Submit final deliverables and documentation
@@ -1089,4 +1186,8 @@ All Week 1-10 deliverables are **fully implemented and functional**. The applica
 - **AI Weekly Report** (Week 10) with comprehensive performance analysis, trend identification, and personalized recommendations.
 - **Global loading skeleton** (Week 10) for instant page transition feedback across all routes.
 
-The application comprises **21 Mongoose models**, **23 pages**, and **42 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout.
+- **Unified amber design system** (Week 11) applied across all 24 pages, eliminating all dark-only third-party components in favor of theme-aware, amber-accented cards, Lucide icons, and `motion/react` animations.
+- **Knowledge Graph enhancements** (Week 11) — Mastery Overlay (node color-coded by quiz performance), Graph Insights panel (hub topics, cross-pack bridges, isolated topic warnings), and Quick Study Actions (Flashcards + Take Quiz buttons in the node detail panel).
+- **Profile overhaul** (Week 11) — streak hero strip, 4-column stats grid, redesigned achievement badges with Lucide icons, amber glow for unlocked achievements, and a native-input security form.
+
+The application comprises **21 Mongoose models**, **24 pages**, and **46 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout. The frontend is fully theme-aware (dark/light), consistently designed, and production-ready.

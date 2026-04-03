@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    revalidateTag(TAGS.dashboard(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id), "");
     return NextResponse.json({
       id: user._id,
       name: user.name,

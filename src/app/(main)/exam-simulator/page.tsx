@@ -7,8 +7,8 @@ export default function ExamSimulatorPage() {
     <BlurFade delay={0.1} duration={0.4}>
       <div className="space-y-4">
         <div>
-          <TextShimmer className="text-2xl font-bold">AI Exam Simulator</TextShimmer>
-          <p className="text-sm text-muted-foreground">
+          <TextShimmer className="font-display text-2xl sm:text-3xl font-bold tracking-tight">AI Exam Simulator</TextShimmer>
+          <p className="text-sm text-muted-foreground mt-1">
             Generate timed exams from your study materials with AI
           </p>
         </div>

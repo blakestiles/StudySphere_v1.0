@@ -7,7 +7,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import UserButton from "@/components/features/auth/UserButton";
-import NotificationBell from "@/components/features/reminders/NotificationBell";
 import TextShimmer from "@/components/ui/text-shimmer";
 import {
   Dialog,
@@ -102,10 +101,10 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`relative overflow-hidden sticky top-0 z-50 w-full transition-all duration-300 ${
+      <nav className={`relative overflow-hidden sticky top-0 z-50 w-full transition-all duration-500 ${
         scrolled
-          ? "bg-background/90 backdrop-blur-2xl border-b border-border/60 shadow-sm"
-          : "bg-background/50 backdrop-blur-lg border-b border-transparent"
+          ? "bg-background/85 backdrop-blur-3xl border-b border-border/50 shadow-[0_1px_0_0_oklch(1_0_0_/_6%),0_4px_24px_oklch(0_0_0_/_8%)]"
+          : "bg-background/40 backdrop-blur-xl border-b border-transparent"
       }`}>
         <div className="flex h-14 items-center px-4 md:px-6 gap-3">
           <motion.button
@@ -136,7 +135,7 @@ export default function Navbar() {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               onClick={openCommandPalette}
-              className="hidden items-center gap-2.5 rounded-xl border border-border/50 bg-muted/30 px-3.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/50 sm:flex transition-all duration-200"
+              className="hidden items-center gap-2.5 rounded-xl border border-border/40 bg-muted/20 px-3.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:border-border/60 hover:bg-muted/40 sm:flex transition-all duration-200 shadow-inner shadow-black/5"
             >
               <Search className="h-3.5 w-3.5 shrink-0" />
               <span className="text-muted-foreground/60 text-[13px]">Search anything…</span>
@@ -176,7 +175,6 @@ export default function Navbar() {
               )}
             </AnimatePresence>
 
-            <NotificationBell />
             <UserButton />
           </div>
         </div>

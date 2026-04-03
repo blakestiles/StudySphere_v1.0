@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "motion/react";
 import EssayResults from "./EssayResults";
-import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
-import BlurFade from "@/components/ui/blur-fade";
-import TextShimmer from "@/components/ui/text-shimmer";
 import CustomSelect from "@/components/ui/custom-select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Sparkles, PenLine, Send, BookOpen, Loader2, RotateCcw } from "lucide-react";
 
 interface StudyPackOption {
   _id: string;
@@ -19,39 +16,12 @@ interface EssayWriterProps {
   studyPacks: StudyPackOption[];
 }
 
-/* ── SVG Icons ──────────────────────────────────────── */
-
-function PenIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
-function SparklesIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-      <path d="M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <polyline points="6,9 12,15 18,9" />
-    </svg>
-  );
-}
-
 export default function EssayWriter({ studyPacks }: EssayWriterProps) {
   const [selectedPackId, setSelectedPackId] = useState("");
   const [question, setQuestion] = useState("");
   const [essayText, setEssayText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [results, setResults] = useState<{
     scores: any;
     feedback: any;
@@ -61,10 +31,29 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
   const wordCount = essayText.trim() ? essayText.trim().split(/\s+/).length : 0;
   const charCount = essayText.length;
   const canSubmit = charCount >= 50 && question.trim().length > 0 && !isSubmitting;
+  const charProgress = Math.min(100, (charCount / 50) * 100);
+
+  async function handleGenerateQuestion() {
+    if (!selectedPackId || isGeneratingQuestion) return;
+    setIsGeneratingQuestion(true);
+    try {
+      const res = await fetch("/api/essays/generate-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studyPackId: selectedPackId }),
+      });
+      if (!res.ok) throw new Error("Failed to generate question");
+      const data = await res.json();
+      setQuestion(data.question);
+    } catch {
+      toast.error("Failed to generate question");
+    } finally {
+      setIsGeneratingQuestion(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!canSubmit) return;
-
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/essays/grade", {
@@ -76,12 +65,10 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
           essayText: essayText.trim(),
         }),
       });
-
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Failed to grade essay");
       }
-
       const data = await res.json();
       setResults({
         scores: data.attempt.scores,
@@ -104,112 +91,194 @@ export default function EssayWriter({ studyPacks }: EssayWriterProps) {
 
   if (results) {
     return (
-      <BlurFade>
+      <motion.div
+        initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <EssayResults
           scores={results.scores}
           feedback={results.feedback}
           wordCount={results.wordCount}
           onWriteAnother={handleWriteAnother}
         />
-      </BlurFade>
+      </motion.div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      {/* ── Left: Form ────────────────────────────────── */}
-      <div className="flex-1 min-w-0 h-full">
-        <div className="space-y-5 p-2">
-        {/* Question / Prompt */}
-        <div>
-          <label className="mb-2 block text-sm font-medium text-foreground">
-            Question / Prompt
-          </label>
-          <Input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Enter the question you want to answer, e.g., 'Explain the process of photosynthesis and its importance...'"
-            className="w-full"
-          />
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="max-w-2xl mx-auto space-y-4"
+    >
+      {/* ── Question card ─────────────────────────────── */}
+      <div className="relative rounded-2xl border border-amber-500/20 bg-card overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.05] via-transparent to-orange-500/[0.03] pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
 
-        {/* Reference Material */}
-        <div>
-          <label className="mb-2 block text-sm font-medium text-foreground">
-            Reference Material (optional)
-          </label>
-          <CustomSelect
-            value={selectedPackId}
-            onValueChange={setSelectedPackId}
-            options={[
-              { value: "", label: "Select study pack for context" },
-              ...studyPacks.map((pack) => ({ value: pack._id, label: pack.title })),
-            ]}
-            placeholder="Select reference material..."
-            disabled={isSubmitting}
-          />
-        </div>
-
-        {/* Your Answer */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm font-medium text-foreground">
-              Your Answer
-            </label>
-            <span className="text-xs text-muted-foreground">{wordCount} words</span>
+        <div className="relative p-5 space-y-4">
+          {/* Header */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-lg bg-amber-500/20 blur-lg" />
+              <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/25">
+                <PenLine className="h-4 w-4 text-amber-500" />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-[13.5px] font-semibold text-foreground">Question / Prompt</h2>
+              <p className="text-[11px] text-muted-foreground/60">Enter manually or auto-generate from your study pack</p>
+            </div>
           </div>
-          <Textarea
-            value={essayText}
-            onChange={(e) => setEssayText(e.target.value)}
-            placeholder="Write your answer here..."
-            rows={14}
-            className="resize-none w-full"
-          />
-          {charCount > 0 && charCount < 50 && (
-            <p className="mt-1.5 text-xs text-red-400">
-              Minimum 50 characters required ({50 - charCount} more needed)
-            </p>
-          )}
+
+          {/* Study pack + generate row */}
+          <div className="flex gap-2">
+            <div className="flex-1 min-w-0">
+              <CustomSelect
+                value={selectedPackId}
+                onValueChange={setSelectedPackId}
+                options={[
+                  { value: "", label: "No reference material…" },
+                  ...studyPacks.map((p) => ({ value: p._id, label: p.title })),
+                ]}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerateQuestion}
+              disabled={!selectedPackId || isGeneratingQuestion}
+              className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+            >
+              {isGeneratingQuestion
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Sparkles className="h-3.5 w-3.5" />
+              }
+              {isGeneratingQuestion ? "Generating…" : "Auto-generate"}
+            </button>
+          </div>
+
+          {/* Question input */}
+          <div className="relative">
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Enter the question you want to answer, e.g. 'Explain the process of photosynthesis and its importance…'"
+              rows={2}
+              className="w-full rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all resize-none"
+            />
+            {question && (
+              <button
+                onClick={() => setQuestion("")}
+                className="absolute right-3 top-3 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Writing area card ─────────────────────────── */}
+      <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+        {/* Card header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-muted-foreground/60" />
+            <span className="text-[13px] font-medium text-foreground">Your Answer</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Word count */}
+            <span className={`text-[11px] tabular-nums font-medium ${wordCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/40"}`}>
+              {wordCount} word{wordCount !== 1 ? "s" : ""}
+            </span>
+            {/* Char count */}
+            <span className="text-[11px] tabular-nums text-muted-foreground/40">
+              {charCount} chars
+            </span>
+          </div>
         </div>
 
-        {/* Submit Button */}
-        <AnimatedGenerateButton
-          isLoading={isSubmitting}
-          idleLabel="Submit for AI Grading"
-          loadingLabel="Grading your essay..."
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="w-full py-3"
+        {/* Textarea */}
+        <textarea
+          value={essayText}
+          onChange={(e) => setEssayText(e.target.value)}
+          placeholder="Write your answer here. Be thorough — explain concepts clearly, support your points with evidence, and demonstrate critical thinking…"
+          rows={14}
+          className="w-full bg-transparent px-5 py-4 text-sm text-foreground placeholder:text-muted-foreground/35 focus:outline-none resize-none"
         />
+
+        {/* Footer: min-char progress + submit */}
+        <div className="border-t border-border/40 px-5 py-3 space-y-3">
+          {/* Min char progress */}
+          <AnimatePresence>
+            {charCount > 0 && charCount < 50 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-1.5 overflow-hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground/60">Minimum length</span>
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">{charCount}/50 chars</span>
+                </div>
+                <div className="h-1 bg-muted/60 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                    style={{ width: `${charProgress}%` }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Submit row */}
+          <div className="flex items-center justify-between gap-3">
+            {/* Criteria reminder */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {["Accuracy", "Depth", "Clarity", "Thinking"].map((c) => (
+                <span key={c} className="text-[10px] text-muted-foreground/45 bg-muted/40 rounded-md px-1.5 py-0.5 border border-border/40">
+                  {c}
+                </span>
+              ))}
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_10px_oklch(0.76_0.17_62_/_28%)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              {isSubmitting
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Grading…</>
+                : <><Send className="h-3.5 w-3.5" /> Submit for Grading</>
+              }
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Right: Instruction Panel ──────────────────── */}
-      <div className="w-full lg:w-80">
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card px-6 py-16 text-center">
-          <div className="mb-4 rounded-xl border border-border bg-muted/50 p-4">
-            <PenIcon className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <TextShimmer className="text-sm font-medium" duration={2}>
-            Write your answer and submit to receive AI-powered feedback
-          </TextShimmer>
-          <div className="mt-6 space-y-2 text-left">
-            <p className="text-xs text-muted-foreground">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />
-              Scored on accuracy, depth, clarity &amp; critical thinking
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />
-              Detailed feedback on each criterion
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />
-              Missed points &amp; improvement suggestions
-            </p>
-          </div>
+      {/* Scoring criteria hint */}
+      <div className="rounded-2xl border border-border/40 bg-muted/20 px-5 py-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50 mb-3">Scoring Criteria</p>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+          {[
+            { label: "Accuracy", desc: "Factual correctness", color: "bg-blue-500" },
+            { label: "Depth", desc: "Thoroughness of analysis", color: "bg-violet-500" },
+            { label: "Clarity", desc: "Clear communication", color: "bg-emerald-500" },
+            { label: "Critical Thinking", desc: "Reasoning & insight", color: "bg-amber-500" },
+          ].map(({ label, desc, color }) => (
+            <div key={label} className="flex items-start gap-2">
+              <span className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${color}`} />
+              <div>
+                <p className="text-[11.5px] font-medium text-foreground/70">{label}</p>
+                <p className="text-[10.5px] text-muted-foreground/50">{desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

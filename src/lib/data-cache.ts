@@ -38,7 +38,7 @@ export const TAGS = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type SerializedPack    = { _id: string; title: string };
 export type SerializedPackFull = { id: string; title: string; status: string; docTitle: string; createdAt: string };
-export type SerializedDoc     = { _id: string; title: string; fileType: "pdf" | "text"; status: string; uploadedAt: string };
+export type SerializedDoc     = { _id: string; title: string; fileType: "pdf" | "text"; status: "processing" | "ready" | "error"; uploadedAt: string };
 export type SerializedGoal    = {
   _id: string; title: string; description: string; targetType: string;
   targetValue: number; currentValue: number; deadline: string | undefined;
@@ -111,7 +111,7 @@ export function getCachedDocuments(userId: string): Promise<SerializedDoc[]> {
         _id: String(d._id),
         title: d.title as string,
         fileType: d.fileType as "pdf" | "text",
-        status: d.status as string,
+        status: d.status as "processing" | "ready" | "error",
         uploadedAt: new Date(d.uploadedAt as any).toISOString(),
       }));
     },

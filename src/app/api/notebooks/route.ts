@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       studyPackId: result.data.studyPackId || undefined,
     });
 
-    revalidateTag(TAGS.notebooks(session.user.id));
+    revalidateTag(TAGS.notebooks(session.user.id), "");
     return NextResponse.json({ notebook }, { status: 201 });
   } catch (error) {
     console.error("Notebook create error:", error);

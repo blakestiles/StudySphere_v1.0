@@ -4,11 +4,14 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MessageLoadingBubble } from "@/components/ui/message-loading";
-import { AIChatCard } from "@/components/ui/ai-chat-card";
-import BlurFade from "@/components/ui/blur-fade";
+import { motion } from "motion/react";
 import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
 import CustomSelect from "@/components/ui/custom-select";
+import {
+  Plus, X, Mic, MicOff, Volume2, VolumeX, Send,
+  Sparkles, Brain, ClipboardCheck, FileText,
+  Layers, Target, CalendarDays, MessageSquare, Menu, BookOpen,
+} from "lucide-react";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -27,95 +30,38 @@ interface ChatMessage {
   createdAt: string;
 }
 
-/* ── SVG Icons ──────────────────────────────────────── */
+/* ── Constants ──────────────────────────────────────── */
 
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
+const SUGGESTIONS = [
+  { label: "Explain a concept", icon: Brain, color: "violet" },
+  { label: "Quiz me on this", icon: ClipboardCheck, color: "emerald" },
+  { label: "Summarize my notes", icon: FileText, color: "amber" },
+  { label: "Create flashcards", icon: Layers, color: "blue" },
+  { label: "Find my weak areas", icon: Target, color: "rose" },
+  { label: "Build a study plan", icon: CalendarDays, color: "sky" },
+] as const;
 
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
+const chipColors: Record<string, string> = {
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20 hover:bg-violet-500/15",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/15",
+  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/15",
+  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 hover:bg-rose-500/15",
+  sky: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 hover:bg-sky-500/15",
+};
 
-function MicIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-      <path d="M19 10v2a7 7 0 01-14 0v-2" />
-      <line x1="12" y1="19" x2="12" y2="23" />
-      <line x1="8" y1="23" x2="16" y2="23" />
-    </svg>
-  );
-}
+/* ── Helpers ────────────────────────────────────────── */
 
-function MicOffIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="1" y1="1" x2="23" y2="23" />
-      <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6" />
-      <path d="M17 16.95A7 7 0 015 12v-2m14 0v2c0 .87-.16 1.71-.46 2.49" />
-      <line x1="12" y1="19" x2="12" y2="23" />
-      <line x1="8" y1="23" x2="16" y2="23" />
-    </svg>
-  );
-}
-
-function VolumeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-      <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-    </svg>
-  );
-}
-
-function VolumeOffIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-      <line x1="23" y1="9" x2="17" y2="15" />
-      <line x1="17" y1="9" x2="23" y2="15" />
-    </svg>
-  );
-}
-
-function SendIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="22" y1="2" x2="11" y2="13" />
-      <polygon points="22,2 15,22 11,13 2,9" />
-    </svg>
-  );
-}
-
-function SparklesIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-      <path d="M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z" />
-      <path d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z" />
-    </svg>
-  );
-}
-
-function MenuIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <line x1="3" y1="18" x2="21" y2="18" />
-    </svg>
-  );
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 /* ── Component ──────────────────────────────────────── */
@@ -133,15 +79,14 @@ export default function ChatPage() {
   const [newChatPack, setNewChatPack] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Load threads on mount
   useEffect(() => {
     fetchThreads();
     fetchStudyPacks();
   }, []);
 
-  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -152,9 +97,7 @@ export default function ChatPage() {
       if (!res.ok) return;
       const data = await res.json();
       setThreads(data.threads);
-    } catch {
-      // silent fail
-    }
+    } catch { /* silent */ }
   }
 
   async function fetchStudyPacks() {
@@ -164,9 +107,7 @@ export default function ChatPage() {
       const data = await res.json();
       const packs = Array.isArray(data) ? data : data.studyPacks || [];
       setStudyPacks(packs.map((sp: any) => ({ _id: sp._id, title: sp.title })));
-    } catch {
-      // silent fail
-    }
+    } catch { /* silent */ }
   }
 
   const fetchMessages = useCallback(async (threadId: string) => {
@@ -175,33 +116,33 @@ export default function ChatPage() {
       if (!res.ok) return;
       const data = await res.json();
       setMessages(data.messages);
-    } catch {
-      // silent fail
-    }
+    } catch { /* silent */ }
   }, []);
 
-  async function createThread(studyPackId?: string) {
+  async function createThread(studyPackId?: string): Promise<string | null> {
     try {
       const res = await fetch("/api/chat/threads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studyPackId }),
       });
-      if (!res.ok) throw new Error("Failed to create thread");
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setThreads((prev) => [data.thread, ...prev]);
       setSelectedThreadId(data.thread._id);
       setMessages([]);
       setMobileSidebarOpen(false);
+      return data.thread._id as string;
     } catch {
       toast.error("Failed to create new chat");
+      return null;
     }
   }
 
   async function deleteThread(threadId: string) {
     try {
       const res = await fetch(`/api/chat/threads/${threadId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete thread");
+      if (!res.ok) throw new Error();
       setThreads((prev) => prev.filter((t) => t._id !== threadId));
       if (selectedThreadId === threadId) {
         setSelectedThreadId(null);
@@ -218,8 +159,9 @@ export default function ChatPage() {
     setMobileSidebarOpen(false);
   }
 
-  async function sendMessage(content: string) {
-    if (!content.trim() || isLoading || !selectedThreadId) return;
+  async function sendMessage(content: string, threadId?: string) {
+    const tid = threadId ?? selectedThreadId;
+    if (!content.trim() || isLoading || !tid) return;
 
     const userMsg: ChatMessage = {
       _id: "temp-" + Date.now(),
@@ -232,13 +174,12 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`/api/chat/threads/${selectedThreadId}/messages`, {
+      const res = await fetch(`/api/chat/threads/${tid}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: content.trim(), eli5: eli5Mode }),
       });
-
-      if (!res.ok) throw new Error("Failed to send message");
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setMessages((prev) => [...prev, data.message]);
       fetchThreads();
@@ -247,7 +188,7 @@ export default function ChatPage() {
         ...prev,
         {
           _id: "error-" + Date.now(),
-          role: "assistant",
+          role: "assistant" as const,
           content: "Sorry, I encountered an error. Please try again.",
           createdAt: new Date().toISOString(),
         },
@@ -257,6 +198,15 @@ export default function ChatPage() {
     }
   }
 
+  async function handleNewAndSend() {
+    if (!inputValue.trim()) return;
+    const msg = inputValue;
+    setInputValue("");
+    const tid = await createThread();
+    if (!tid) return;
+    await sendMessage(msg, tid);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -264,52 +214,39 @@ export default function ChatPage() {
     }
   }
 
-  // Voice input
   function toggleListening() {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
-
     try {
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        toast.error("Speech recognition is not supported in your browser");
-        return;
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue((prev) => prev + transcript);
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SR) { toast.error("Speech recognition not supported"); return; }
+      const rec = new SR();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = "en-US";
+      rec.onresult = (e: any) => {
+        setInputValue((prev) => prev + e.results[0][0].transcript);
         setIsListening(false);
       };
-
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
-
-      recognitionRef.current = recognition;
-      recognition.start();
+      rec.onerror = () => setIsListening(false);
+      rec.onend = () => setIsListening(false);
+      recognitionRef.current = rec;
+      rec.start();
       setIsListening(true);
     } catch {
-      toast.error("Speech recognition is not supported in your browser");
+      toast.error("Speech recognition not supported");
     }
   }
 
-  // Voice output
   function toggleSpeech(messageId: string, text: string) {
     if (speakingMessageId === messageId) {
       window.speechSynthesis.cancel();
       setSpeakingMessageId(null);
       return;
     }
-
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.onend = () => setSpeakingMessageId(null);
@@ -320,213 +257,338 @@ export default function ChatPage() {
 
   const selectedThread = threads.find((t) => t._id === selectedThreadId);
 
+  /* ── Render ─────────────────────────────────────────── */
+
   return (
-    <div className="relative flex h-[calc(100vh-7.5rem)] overflow-hidden rounded-xl border border-border bg-background">
-      {/* Sidebar overlay for mobile */}
+    <div className="relative flex h-[calc(100vh-7.5rem)] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[0_2px_16px_oklch(0_0_0_/_8%)]">
+
+      {/* Mobile overlay */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/50 md:hidden"
+          className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm md:hidden"
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
 
-      {/* ── Left sidebar ─────────────────────────────── */}
-      <div
-        className={`fixed left-0 top-0 z-30 h-full w-72 border-r border-border bg-card transition-transform md:relative md:z-auto md:block md:w-64 md:translate-x-0 lg:w-72 ${
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        <div className="flex h-full flex-col">
-          {/* New Chat button */}
-          <div className="border-b border-border p-3">
-            <button
-              onClick={() => createThread()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <PlusIcon className="h-4 w-4" />
-              New Chat
-            </button>
-            {studyPacks.length > 0 && (
-              <CustomSelect
-                value={newChatPack}
-                onValueChange={(val) => {
-                  setNewChatPack("");
-                  if (val) createThread(val);
-                }}
-                options={[
-                  { value: "", label: "New chat with study pack..." },
-                  ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
-                ]}
-                className="mt-3"
-              />
-            )}
-          </div>
+      {/* ── Sidebar ──────────────────────────────────── */}
+      <div className={`fixed left-0 top-0 z-30 h-full w-72 bg-card flex flex-col border-r border-border/60 transition-transform md:relative md:z-auto md:w-64 md:translate-x-0 lg:w-[260px] ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
 
-          {/* Thread list */}
-          <div className="flex-1 overflow-y-auto">
-            {threads.length === 0 ? (
-              <p className="p-4 text-center text-xs text-muted-foreground">
-                No chats yet. Start a new one!
-              </p>
-            ) : (
-              threads.map((thread, index) => (
-                <BlurFade key={thread._id} delay={index * 0.03}>
+        {/* Amber top bar */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
+
+        {/* New chat header */}
+        <div className="px-3 pt-4 pb-3 border-b border-border/60">
+          <button
+            onClick={() => createThread()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_8px_oklch(0.76_0.17_62_/_25%)] hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Chat
+          </button>
+          {studyPacks.length > 0 && (
+            <CustomSelect
+              value={newChatPack}
+              onValueChange={(val) => {
+                setNewChatPack("");
+                if (val) createThread(val);
+              }}
+              options={[
+                { value: "", label: "Chat about a study pack..." },
+                ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+              ]}
+              className="mt-2"
+            />
+          )}
+        </div>
+
+        {/* Threads */}
+        <div className="flex-1 overflow-y-auto py-1.5">
+          {threads.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <MessageSquare className="h-6 w-6 text-muted-foreground/25 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground/40">No chats yet</p>
+            </div>
+          ) : (
+            threads.map((thread, index) => {
+              const isActive = selectedThreadId === thread._id;
+              return (
+                <motion.div
+                  key={thread._id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03, duration: 0.25 }}
+                >
                   <div
-                    className={`group flex cursor-pointer items-start gap-2 border-b border-border px-3 py-3 transition-colors hover:bg-muted/50 ${
-                      selectedThreadId === thread._id ? "bg-muted/70" : ""
+                    className={`group relative flex cursor-pointer items-start gap-2.5 px-3 py-2.5 mx-1 my-0.5 rounded-xl transition-colors ${
+                      isActive ? "bg-amber-500/10" : "hover:bg-muted/60"
                     }`}
                     onClick={() => selectThread(thread._id)}
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{thread.title}</p>
-                      {thread.studyPackId && (
-                        <p className="truncate text-xs text-muted-foreground">
-                          {thread.studyPackId.title}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(thread.updatedAt).toLocaleDateString()}
-                      </p>
+                    {/* Active bar */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full bg-gradient-to-b from-amber-500 to-orange-500" />
+                    )}
+
+                    {/* Icon */}
+                    <div className={`shrink-0 mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg border transition-colors ${
+                      isActive
+                        ? "bg-amber-500/15 border-amber-500/25 text-amber-500"
+                        : "bg-muted/50 border-border/50 text-muted-foreground/50"
+                    }`}>
+                      <MessageSquare className="h-3.5 w-3.5" />
                     </div>
+
+                    {/* Text */}
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-[12.5px] font-medium leading-snug ${
+                        isActive ? "text-foreground" : "text-foreground/75"
+                      }`}>
+                        {thread.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                        {thread.studyPackId && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400/80 bg-amber-500/8 border border-amber-500/15 rounded px-1.5 py-0.5 max-w-[80px] truncate shrink-0">
+                            <BookOpen className="h-2.5 w-2.5 shrink-0" />
+                            <span className="truncate">{thread.studyPackId.title}</span>
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground/35 tabular-nums">
+                          {relativeTime(thread.updatedAt)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Delete */}
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteThread(thread._id);
-                      }}
-                      className="mt-0.5 rounded p-1 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                      onClick={(e) => { e.stopPropagation(); deleteThread(thread._id); }}
+                      className="shrink-0 mt-0.5 rounded-lg p-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 text-muted-foreground/40 transition-all"
                     >
-                      <XIcon className="h-3.5 w-3.5" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                </BlurFade>
-              ))
-            )}
-          </div>
+                </motion.div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* ── Main chat area ───────────────────────────── */}
+      {/* ── Main chat ────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {!selectedThreadId ? (
-          /* Empty state */
-          <>
-            {/* Header bar — in normal flow */}
-            <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-              <div className="flex items-center gap-2">
-                <button
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted md:hidden"
-                  onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-                >
-                  <MenuIcon className="h-5 w-5" />
-                </button>
-                <h2 className="text-lg font-semibold text-foreground">AI Tutor</h2>
-              </div>
-              <button
-                onClick={() => setEli5Mode(!eli5Mode)}
-                className="flex items-center gap-2"
-              >
-                <span className="text-xs font-medium text-muted-foreground">Explain Like I&apos;m 5</span>
-                <div className={`relative h-5 w-9 rounded-full transition-colors ${eli5Mode ? "bg-orange-500" : "bg-muted"}`}>
-                  <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${eli5Mode ? "translate-x-4" : "translate-x-0.5"}`} />
-                </div>
-              </button>
-            </div>
 
-            <div className="flex items-center justify-center h-full">
-              <AIChatCard />
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Thread header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <button
-                  className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted md:hidden"
-                  onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-                >
-                  <MenuIcon className="h-5 w-5" />
-                </button>
-                <h3 className="truncate text-base font-semibold text-foreground">
-                  AI Tutor
-                </h3>
-                {selectedThread?.studyPackId && (
-                  <p className="truncate text-xs text-muted-foreground">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <button
+              className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted md:hidden"
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            {selectedThread ? (
+              <div className="min-w-0">
+                <p className="truncate text-[13.5px] font-semibold text-foreground leading-tight">
+                  {selectedThread.title}
+                </p>
+                {selectedThread.studyPackId && (
+                  <p className="text-[11px] text-muted-foreground/55 truncate">
                     {selectedThread.studyPackId.title}
                   </p>
                 )}
               </div>
-              <button
-                onClick={() => setEli5Mode(!eli5Mode)}
-                className="flex items-center gap-2"
-              >
-                <span className="text-xs font-medium text-muted-foreground">Explain Like I&apos;m 5</span>
-                <div className={`relative h-5 w-9 rounded-full transition-colors ${eli5Mode ? "bg-orange-500" : "bg-muted"}`}>
-                  <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${eli5Mode ? "translate-x-4" : "translate-x-0.5"}`} />
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                 </div>
-              </button>
-            </div>
+                <span className="text-[13.5px] font-semibold text-foreground">AI Tutor</span>
+              </div>
+            )}
+          </div>
 
-            {/* Messages */}
+          {/* ELI5 toggle */}
+          <button
+            onClick={() => setEli5Mode(!eli5Mode)}
+            className={`flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-[11.5px] font-medium transition-all ${
+              eli5Mode
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                : "bg-muted/40 border-border/50 text-muted-foreground hover:border-border"
+            }`}
+          >
+            <span>ELI5</span>
+            <div className={`relative h-4 w-7 rounded-full transition-colors ${eli5Mode ? "bg-amber-500" : "bg-muted-foreground/25"}`}>
+              <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${eli5Mode ? "translate-x-3" : "translate-x-0.5"}`} />
+            </div>
+          </button>
+        </div>
+
+        {/* ── No thread: welcome state ─────────────── */}
+        {!selectedThreadId ? (
+          <div className="flex flex-1 flex-col items-center justify-center p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-md space-y-4"
+            >
+              {/* Icon + heading */}
+              <div className="text-center">
+                <div className="relative mx-auto mb-4 h-14 w-14">
+                  <div className="absolute inset-0 rounded-2xl bg-amber-500/20 blur-2xl" />
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/25">
+                    <Sparkles className="h-6 w-6 text-amber-500" />
+                  </div>
+                </div>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  How can I help you study?
+                </h2>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  I&apos;ve read all your materials. Ask me anything or pick a prompt.
+                </p>
+              </div>
+
+              {/* Suggestion chips */}
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <motion.button
+                      key={s.label}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => { setInputValue(s.label); inputRef.current?.focus(); }}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${chipColors[s.color]}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      {s.label}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              {/* Input */}
+              <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card px-3 py-2 focus-within:border-amber-500/40 focus-within:ring-2 focus-within:ring-amber-500/10 transition-all">
+                <button
+                  onClick={toggleListening}
+                  className={`shrink-0 rounded-lg p-1.5 transition-colors ${isListening ? "bg-red-500/20 text-red-400" : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted"}`}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleNewAndSend(); } }}
+                  placeholder="Ask anything — press Enter to start"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+                />
+                <button
+                  onClick={handleNewAndSend}
+                  disabled={!inputValue.trim()}
+                  className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-[0_2px_6px_oklch(0.76_0.17_62_/_28%)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        ) : (
+          <>
+            {/* ── Messages ─────────────────────────────── */}
             <div className="relative flex-1 overflow-y-auto p-4">
-              <AnimatedGridPattern className="absolute inset-0 opacity-[0.03] pointer-events-none" numSquares={25} />
+              <AnimatedGridPattern className="absolute inset-0 opacity-[0.025] pointer-events-none" numSquares={20} />
+
               {messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3">
-                  <SparklesIcon className="h-10 w-10 text-orange-400" />
-                  <p className="text-sm font-medium text-foreground">
-                    Ask anything about your study materials
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Use the mic to record voice notes, or toggle ELI5 for simpler answers
-                  </p>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <Sparkles className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Ask anything about your study materials</p>
+                  <p className="text-xs text-muted-foreground">Use mic for voice · toggle ELI5 for simpler answers</p>
+                  <div className="flex flex-wrap justify-center gap-2 mt-1 max-w-sm">
+                    {SUGGESTIONS.slice(0, 4).map((s) => {
+                      const Icon = s.icon;
+                      return (
+                        <button
+                          key={s.label}
+                          onClick={() => sendMessage(s.label)}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${chipColors[s.color]}`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-5 max-w-3xl mx-auto">
                   {messages.map((msg) => (
-                    <div
+                    <motion.div
                       key={msg._id}
-                      className={`flex ${
-                        msg.role === "user" ? "justify-end" : "justify-start"
-                      }`}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
-                      <div
-                        className={`max-w-[85%] rounded-xl px-4 py-3 text-sm ${
+                      {/* AI avatar */}
+                      {msg.role === "assistant" && (
+                        <div className="shrink-0 mt-1 flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20">
+                          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        </div>
+                      )}
+
+                      <div className={`max-w-[82%] flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                        <div className={`rounded-2xl px-4 py-3 text-sm ${
                           msg.role === "user"
-                            ? "bg-orange-500 text-white"
-                            : "border border-border bg-card text-foreground"
-                        }`}
-                      >
-                        {msg.role === "assistant" ? (
-                          <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-li:my-0.5">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content}
-                            </ReactMarkdown>
-                          </div>
-                        ) : (
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
-                        )}
+                            ? "bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-br-sm"
+                            : "border border-border/60 bg-card text-foreground rounded-bl-sm"
+                        }`}>
+                          {msg.role === "assistant" ? (
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-li:my-0.5">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                          )}
+                        </div>
+
                         {msg.role === "assistant" && !msg._id.startsWith("error-") && (
                           <button
                             onClick={() => toggleSpeech(msg._id, msg.content)}
-                            className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/45 hover:text-muted-foreground transition-colors px-1"
                           >
-                            {speakingMessageId === msg._id ? (
-                              <>
-                                <VolumeOffIcon className="h-3.5 w-3.5" /> Stop
-                              </>
-                            ) : (
-                              <>
-                                <VolumeIcon className="h-3.5 w-3.5" /> Listen
-                              </>
-                            )}
+                            {speakingMessageId === msg._id
+                              ? <><VolumeX className="h-3 w-3" /> Stop</>
+                              : <><Volume2 className="h-3 w-3" /> Listen</>
+                            }
                           </button>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
+
                   {isLoading && (
-                    <div className="flex justify-start">
-                      <MessageLoadingBubble className="my-2" />
+                    <div className="flex gap-3 justify-start">
+                      <div className="shrink-0 mt-1 flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      </div>
+                      <div className="rounded-2xl rounded-bl-sm border border-border/60 bg-card px-4 py-3.5">
+                        <div className="flex gap-1.5 items-center">
+                          {[0, 1, 2].map((i) => (
+                            <motion.div
+                              key={i}
+                              className="h-1.5 w-1.5 rounded-full bg-amber-500"
+                              animate={{ y: [0, -5, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.6, ease: "easeInOut", delay: i * 0.15 }}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                   <div ref={messagesEndRef} />
@@ -534,39 +596,31 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Input area */}
-            <div className="border-t border-border px-4 py-3">
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+            {/* ── Input bar ────────────────────────────── */}
+            <div className="border-t border-border/60 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 focus-within:border-amber-500/40 focus-within:ring-2 focus-within:ring-amber-500/10 transition-all max-w-3xl mx-auto">
                 <button
                   onClick={toggleListening}
-                  className={`flex-shrink-0 rounded-lg p-2 transition-colors ${
-                    isListening
-                      ? "bg-red-500/20 text-red-400"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
+                  className={`shrink-0 rounded-lg p-1.5 transition-colors ${isListening ? "bg-red-500/20 text-red-400" : "text-muted-foreground/45 hover:text-muted-foreground hover:bg-muted"}`}
                   title={isListening ? "Stop listening" : "Voice input"}
                 >
-                  {isListening ? (
-                    <MicOffIcon className="h-4 w-4" />
-                  ) : (
-                    <MicIcon className="h-4 w-4" />
-                  )}
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </button>
                 <input
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about your study material..."
+                  placeholder="Ask about your study material…"
                   disabled={isLoading}
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none disabled:opacity-50"
                 />
                 <button
                   onClick={() => sendMessage(inputValue)}
                   disabled={!inputValue.trim() || isLoading}
-                  className="flex-shrink-0 rounded-lg bg-orange-500 p-2 text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-[0_2px_6px_oklch(0.76_0.17_62_/_28%)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
-                  <SendIcon className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>

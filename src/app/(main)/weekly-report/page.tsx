@@ -1,8 +1,6 @@
-
 import { requireSession } from "@/lib/auth-cache";
 import { getCachedWeeklyReports } from "@/lib/data-cache";
 import WeeklyReportView from "@/components/features/reports/WeeklyReportView";
-import BlurFade from "@/components/ui/blur-fade";
 import TextShimmer from "@/components/ui/text-shimmer";
 
 export default async function WeeklyReportPage() {
@@ -10,13 +8,12 @@ export default async function WeeklyReportPage() {
   const serializedReports = await getCachedWeeklyReports(session.user.id);
 
   return (
-    <BlurFade delay={0.1} duration={0.4}>
-      <div className="space-y-4">
-        <div>
-          <TextShimmer className="text-2xl font-bold">AI Weekly Report</TextShimmer>
-        </div>
-        <WeeklyReportView initialReports={serializedReports} />
+    <div className="space-y-4">
+      <div>
+        <TextShimmer className="font-display text-2xl sm:text-3xl font-bold tracking-tight">AI Weekly Report</TextShimmer>
+        <p className="text-sm text-muted-foreground mt-1">AI-generated analysis of your weekly study performance</p>
       </div>
-    </BlurFade>
+      <WeeklyReportView initialReports={serializedReports} />
+    </div>
   );
 }

@@ -1,24 +1,23 @@
-
-import lazyLoad from "next/dynamic";
-import BlurFade from "@/components/ui/blur-fade";
+import dynamic from "next/dynamic";
 import TextShimmer from "@/components/ui/text-shimmer";
 
-const KnowledgeGraph = lazyLoad(
+const KnowledgeGraph = dynamic(
   () => import("@/components/features/mind-map/KnowledgeGraph"),
-  { loading: () => (
-    <div className="animate-pulse rounded-xl border border-border bg-muted/30 h-[600px]" />
-  )}
+  {
+    loading: () => (
+      <div className="animate-pulse rounded-2xl border border-border/60 bg-muted/30 h-[600px]" />
+    ),
+  }
 );
 
 export default async function KnowledgeGraphPage() {
   return (
-    <BlurFade delay={0.1} duration={0.4}>
-      <div className="space-y-3">
-        <div>
-          <TextShimmer className="text-2xl font-bold">Knowledge Graph</TextShimmer>
-        </div>
-        <KnowledgeGraph />
+    <div className="space-y-3">
+      <div>
+        <TextShimmer className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Knowledge Graph</TextShimmer>
+        <p className="text-sm text-muted-foreground mt-1">Visual connections across all your study topics</p>
       </div>
-    </BlurFade>
+      <KnowledgeGraph />
+    </div>
   );
 }

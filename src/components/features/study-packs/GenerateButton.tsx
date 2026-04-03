@@ -23,8 +23,8 @@ export default function GenerateButton({
   if (hasStudyPack && studyPackId) {
     return (
       <Link href={`/study-packs/${studyPackId}`}>
-        <Button variant="outline" size="sm">
-          View Study Pack
+        <Button variant="outline" size="sm" className="h-6 px-2 text-[11px] rounded-md">
+          View Pack
         </Button>
       </Link>
     );

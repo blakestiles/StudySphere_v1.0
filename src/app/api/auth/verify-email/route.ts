@@ -17,18 +17,19 @@ export async function GET(request: Request) {
     await connectDB();
 
     const user = await User.findOne({ emailVerificationToken: token }).select(
-      "+emailVerificationToken"
+      "+emailVerificationToken +emailVerificationExpiry"
     );
 
-    if (!user) {
+    if (!user || (user.emailVerificationExpiry && user.emailVerificationExpiry < new Date())) {
       return NextResponse.json(
-        { error: "Invalid verification token" },
+        { error: "Invalid or expired verification link" },
         { status: 400 }
       );
     }
 
     user.emailVerified = true;
     user.emailVerificationToken = undefined;
+    user.emailVerificationExpiry = undefined;
     await user.save();
 
     return NextResponse.json({ message: "Email verified successfully" });

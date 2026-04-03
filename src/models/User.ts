@@ -8,6 +8,7 @@ const UserSchema = new Schema(
     image: { type: String },
     emailVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String, select: false },
+    emailVerificationExpiry: { type: Date, select: false },
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpiry: { type: Date, select: false },
     bio: { type: String, default: "" },

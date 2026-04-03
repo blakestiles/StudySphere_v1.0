@@ -126,8 +126,8 @@ export async function POST(request: Request) {
     studyPack.mindMap = generated.mindMap || null;
     await studyPack.save();
 
-    revalidateTag(TAGS.studyPacks(session.user.id));
-    revalidateTag(TAGS.dashboard(session.user.id));
+    revalidateTag(TAGS.studyPacks(session.user.id), "");
+    revalidateTag(TAGS.dashboard(session.user.id), "");
     return NextResponse.json({ studyPack }, { status: 201 });
   } catch (error) {
     console.error("Study pack generation error:", error);

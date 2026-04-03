@@ -30,6 +30,7 @@ export default function CustomSelect({
   return (
     <Select.Root value={value || ""} onValueChange={onValueChange} disabled={disabled}>
       <Select.Trigger
+        suppressHydrationWarning
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm",
           "border border-white/10 bg-white/5 text-foreground backdrop-blur-sm",

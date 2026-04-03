@@ -5,10 +5,10 @@ import TextShimmer from "@/components/ui/text-shimmer";
 export default function FocusPage() {
   return (
     <BlurFade delay={0.1} duration={0.4}>
-      <div className="space-y-6">
-        <div className="text-center">
-          <TextShimmer className="text-2xl font-bold">Focus Mode</TextShimmer>
-          <p className="text-sm text-muted-foreground">
+      <div className="space-y-5">
+        <div>
+          <TextShimmer className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Focus Mode</TextShimmer>
+          <p className="text-sm text-muted-foreground mt-1">
             Pomodoro-powered deep work sessions
           </p>
         </div>

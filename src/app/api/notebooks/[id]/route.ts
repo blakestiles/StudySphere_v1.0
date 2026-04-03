@@ -63,7 +63,7 @@ export async function PUT(
 
     const updated = await Notebook.findByIdAndUpdate(id, updates, { new: true }).lean();
 
-    revalidateTag(TAGS.notebooks(session.user.id));
+    revalidateTag(TAGS.notebooks(session.user.id), "");
     return NextResponse.json({ notebook: updated });
   } catch (error) {
     console.error("Notebook update error:", error);
@@ -91,7 +91,7 @@ export async function DELETE(
 
     await Notebook.findByIdAndDelete(id);
 
-    revalidateTag(TAGS.notebooks(session.user.id));
+    revalidateTag(TAGS.notebooks(session.user.id), "");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Notebook delete error:", error);

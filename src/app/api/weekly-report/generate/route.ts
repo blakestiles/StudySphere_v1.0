@@ -164,7 +164,7 @@ export async function POST(request: Request) {
       stats: statsData,
     });
 
-    revalidateTag(TAGS.reports(session.user.id));
+    revalidateTag(TAGS.reports(session.user.id), "");
     return NextResponse.json({ report }, { status: 201 });
   } catch (error) {
     console.error("Weekly report generation error:", error);

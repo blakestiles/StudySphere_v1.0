@@ -2,206 +2,110 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import ShimmerButton from "@/components/ui/shimmer-button";
-import { SparklesText } from "@/components/ui/sparkles-text";
-import { GlowingStarsBackgroundCard } from "@/components/ui/glowing-stars-card";
-import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Play, Settings, History, Timer, CheckCircle2, Circle,
+  ChevronDown, Plus, X, Loader2, Trophy, Coffee, Zap,
+} from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
 
-interface StudyPackOption {
-  _id: string;
-  title: string;
-}
-
-interface FocusModeProps {
-  studyPacks: StudyPackOption[];
-}
-
+interface StudyPackOption { _id: string; title: string }
+interface FocusModeProps { studyPacks: StudyPackOption[] }
 type Phase = "setup" | "active" | "complete";
 type PomodoroPhase = "work" | "shortBreak" | "longBreak";
-
 interface RecentSession {
-  _id: string;
-  duration: number;
-  goals: string[];
-  completedGoals: number[];
-  completedAt: string | null;
-  createdAt: string;
-  sessionsCompleted: number;
+  _id: string; duration: number; goals: string[];
+  completedGoals: number[]; completedAt: string | null;
+  createdAt: string; sessionsCompleted: number;
 }
 
-const SESSIONS_BEFORE_LONG_BREAK = 4;
+/* ── SVG Ring Timer ─────────────────────────────────── */
 
-// ── Icons ─────────────────────────────────────────────
+function RingTimer({ secondsLeft, totalSeconds, color }: { secondsLeft: number; totalSeconds: number; color: string }) {
+  const r = 88;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (secondsLeft / (totalSeconds || 1));
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
 
-function SettingsIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
-      <circle cx="12" cy="12" r="3" />
+    <svg width="220" height="220" viewBox="0 0 220 220" className="drop-shadow-sm">
+      <defs>
+        <filter id="ring-glow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {/* Track */}
+      <circle cx="110" cy="110" r={r} fill="none" strokeWidth="7" className="stroke-muted/60" />
+      {/* Progress — counts down */}
+      <circle
+        cx="110" cy="110" r={r} fill="none"
+        stroke={color} strokeWidth="7" strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={circ - offset}
+        transform="rotate(-90 110 110)"
+        filter="url(#ring-glow)"
+        style={{ transition: "stroke-dashoffset 1s linear" }}
+      />
+      {/* Time */}
+      <text x="110" y="105" textAnchor="middle" dominantBaseline="middle"
+        fill="currentColor" className="fill-foreground"
+        fontSize="38" fontWeight="700" fontFamily="monospace">
+        {mm}:{ss}
+      </text>
     </svg>
   );
 }
 
-function HistoryIcon({ className }: { className?: string }) {
+/* ── Phase dot row ──────────────────────────────────── */
+function PhaseDots({ rounds, sessionsCompleted, pomodoroPhase, workSessionCount, color }: {
+  rounds: number; sessionsCompleted: number; pomodoroPhase: PomodoroPhase; workSessionCount: number; color: string;
+}) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12,6 12,12 16,14" />
-    </svg>
-  );
-}
-
-function PlayIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function TimerIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function FocusReadyIcon() {
-  return (
-    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/15">
-      <svg className="h-8 w-8 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
+    <div className="flex items-center justify-center gap-2">
+      {Array.from({ length: rounds }).map((_, i) => {
+        const done = pomodoroPhase === "work"
+          ? i < workSessionCount - 1
+          : i < sessionsCompleted % rounds || (sessionsCompleted % rounds === 0 && sessionsCompleted > 0 && i < rounds);
+        return (
+          <div
+            key={i}
+            className="h-1.5 w-7 rounded-full transition-all duration-500"
+            style={{ backgroundColor: done ? color : undefined }}
+            data-inactive={!done || undefined}
+          />
+        );
+      })}
+      <style>{`[data-inactive] { background-color: oklch(var(--muted-foreground) / 0.2); }`}</style>
     </div>
   );
 }
 
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
+/* ── Format helpers ─────────────────────────────────── */
+function fmtDate(s: string) {
+  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " · " +
+    new Date(s).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-// ── Duration Preset Card ──────────────────────────────
-
-function DurationCard({
-  value,
-  label,
-  active,
-  onClick,
-}: {
-  value: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-xl border px-5 py-3 transition-all ${
-        active
-          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-          : "border-border bg-muted/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-      }`}
-    >
-      <TimerIcon className="h-5 w-5" />
-      <span className="text-lg font-bold">{value}</span>
-      <span className="text-[10px] uppercase tracking-wider opacity-60">{label}</span>
-    </button>
-  );
-}
-
-// ── SVG Timer ─────────────────────────────────────────
-
-function SVGTimer({
-  secondsLeft,
-  totalSeconds,
-  color,
-}: {
-  secondsLeft: number;
-  totalSeconds: number;
-  color: string;
-}) {
-  const radius = 90;
-  const circumference = 2 * Math.PI * radius;
-  const progress = totalSeconds > 0 ? (totalSeconds - secondsLeft) / totalSeconds : 0;
-  const dashOffset = circumference * (1 - progress);
-
-  const minutes = Math.floor(secondsLeft / 60);
-  const seconds = secondsLeft % 60;
-  const timeStr = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-
-  return (
-    <div className="flex items-center justify-center">
-      <svg width="240" height="240" viewBox="0 0 240 240">
-        <defs>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <circle cx="120" cy="120" r={radius} fill="none" className="stroke-muted-foreground/20" strokeWidth="6" />
-        <circle
-          cx="120"
-          cy="120"
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          transform="rotate(-90 120 120)"
-          filter="url(#glow)"
-          style={{ transition: "stroke-dashoffset 1s linear" }}
-        />
-        <text
-          x="120"
-          y="120"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="currentColor"
-          className="text-foreground"
-          fontSize="40"
-          fontWeight="bold"
-          fontFamily="monospace"
-        >
-          {timeStr}
-        </text>
-      </svg>
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────
-
+/* ── Main component ─────────────────────────────────── */
 export default function FocusMode({ studyPacks }: FocusModeProps) {
   const [phase, setPhase] = useState<Phase>("setup");
 
-  // Panels
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
 
-  // Setup state
+  // Setup
   const [selectedPackId, setSelectedPackId] = useState("");
   const [workDuration, setWorkDuration] = useState(25);
   const [shortBreakDuration, setShortBreakDuration] = useState(5);
   const [longBreakDuration, setLongBreakDuration] = useState(15);
   const [rounds, setRounds] = useState(4);
-  const [goals, setGoals] = useState<string[]>([""]);
+  const [goals, setGoals] = useState<string[]>([]);
+  const [goalInput, setGoalInput] = useState("");
 
-  // Active state
+  // Active
   const [sessionId, setSessionId] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [totalSeconds, setTotalSeconds] = useState(0);
@@ -209,24 +113,13 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
   const [pomodoroPhase, setPomodoroPhase] = useState<PomodoroPhase>("work");
   const [workSessionCount, setWorkSessionCount] = useState(1);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  const [flashEffect, setFlashEffect] = useState(false);
 
-  // Complete state
+  // Complete
   const [recap, setRecap] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isTransitioning = useRef(false);
 
-  // Active preset index (which duration card is selected)
-  const [activePreset, setActivePreset] = useState(0);
-  const presets = [
-    { value: `${workDuration}m`, label: "Work", minutes: workDuration },
-    { value: `${shortBreakDuration}m`, label: "Short Break", minutes: shortBreakDuration },
-    { value: String(rounds), label: "Rounds", minutes: 0 },
-    { value: `${longBreakDuration}m`, label: "Long Break", minutes: longBreakDuration },
-  ];
-
-  // Fetch recent sessions
   const fetchRecentSessions = useCallback(async () => {
     setLoadingSessions(true);
     try {
@@ -235,122 +128,58 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
         const data = await res.json();
         setRecentSessions((data.focusSessions || []).slice(0, 5));
       }
-    } catch {
-      // ignore
-    } finally {
-      setLoadingSessions(false);
-    }
+    } catch { /* silent */ }
+    finally { setLoadingSessions(false); }
   }, []);
 
-  function toggleHistory() {
-    if (!showHistory) {
-      fetchRecentSessions();
-      setShowSettings(false);
-    }
-    setShowHistory((prev) => !prev);
+  function addGoal() {
+    if (!goalInput.trim()) return;
+    setGoals((prev) => [...prev, goalInput.trim()]);
+    setGoalInput("");
   }
 
-  function toggleSettings() {
-    if (!showSettings) {
-      setShowHistory(false);
-    }
-    setShowSettings((prev) => !prev);
+  function removeGoal(i: number) {
+    setGoals((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  // Pomodoro logic
-  const startPomodoroPhase = useCallback(
-    (newPhase: PomodoroPhase) => {
-      let durationMinutes: number;
-      switch (newPhase) {
-        case "work":
-          durationMinutes = workDuration;
-          break;
-        case "shortBreak":
-          durationMinutes = shortBreakDuration;
-          break;
-        case "longBreak":
-          durationMinutes = longBreakDuration;
-          break;
-      }
-      const secs = durationMinutes * 60;
-      setPomodoroPhase(newPhase);
-      setSecondsLeft(secs);
-      setTotalSeconds(secs);
-    },
-    [workDuration, shortBreakDuration, longBreakDuration]
-  );
+  const startPomodoroPhase = useCallback((np: PomodoroPhase) => {
+    const d = np === "work" ? workDuration : np === "shortBreak" ? shortBreakDuration : longBreakDuration;
+    const secs = d * 60;
+    setPomodoroPhase(np);
+    setSecondsLeft(secs);
+    setTotalSeconds(secs);
+  }, [workDuration, shortBreakDuration, longBreakDuration]);
 
   const transitionPhase = useCallback(() => {
     if (isTransitioning.current) return;
     isTransitioning.current = true;
-
-    setFlashEffect(true);
-    setTimeout(() => setFlashEffect(false), 600);
-
     if (pomodoroPhase === "work") {
-      const newCompleted = sessionsCompleted + 1;
-      setSessionsCompleted(newCompleted);
-
-      if (newCompleted % rounds === 0) {
-        toast.info("Great work! Time for a long break.");
-        startPomodoroPhase("longBreak");
-      } else {
-        toast.info("Work session done! Take a short break.");
-        startPomodoroPhase("shortBreak");
-      }
+      const nc = sessionsCompleted + 1;
+      setSessionsCompleted(nc);
+      if (nc % rounds === 0) { toast.info("Long break time!"); startPomodoroPhase("longBreak"); }
+      else { toast.info("Short break — good work!"); startPomodoroPhase("shortBreak"); }
     } else {
-      const nextWork = pomodoroPhase === "longBreak" ? 1 : workSessionCount + 1;
-      setWorkSessionCount(nextWork);
-      toast.info("Break over! Time to focus.");
+      const nw = pomodoroPhase === "longBreak" ? 1 : workSessionCount + 1;
+      setWorkSessionCount(nw);
+      toast.info("Back to focus!");
       startPomodoroPhase("work");
     }
-
-    setTimeout(() => {
-      isTransitioning.current = false;
-    }, 100);
+    setTimeout(() => { isTransitioning.current = false; }, 100);
   }, [pomodoroPhase, sessionsCompleted, workSessionCount, rounds, startPomodoroPhase]);
-
-  const completeSession = useCallback(() => {
-    setPhase("complete");
-  }, []);
 
   useEffect(() => {
     if (phase !== "active" || secondsLeft <= 0) return;
-
-    const timer = setInterval(() => {
+    const t = setInterval(() => {
       setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setTimeout(() => transitionPhase(), 0);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(t); setTimeout(transitionPhase, 0); return 0; }
         return prev - 1;
       });
     }, 1000);
-
-    return () => clearInterval(timer);
+    return () => clearInterval(t);
   }, [phase, secondsLeft, transitionPhase]);
 
-  function updateGoal(index: number, value: string) {
-    setGoals((prev) => prev.map((g, i) => (i === index ? value : g)));
-  }
-
-  function toggleGoalComplete(index: number) {
-    setCompletedGoals((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  }
-
   async function startSession() {
-    const validGoals = goals.filter((g) => g.trim());
-    if (!selectedPackId) {
-      toast.error("Please select a study pack.");
-      return;
-    }
-
+    if (!selectedPackId) { toast.error("Please select a study pack."); return; }
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/focus-sessions", {
@@ -359,15 +188,11 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
         body: JSON.stringify({
           studyPackId: selectedPackId,
           duration: workDuration,
-          goals: validGoals.length > 0 ? validGoals : ["Focus session"],
-          workDuration,
-          shortBreakDuration,
-          longBreakDuration,
+          goals: goals.length > 0 ? goals : ["Focus session"],
+          workDuration, shortBreakDuration, longBreakDuration,
         }),
       });
-
-      if (!res.ok) throw new Error("Failed to create session");
-
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setSessionId(data.focusSession?._id || data._id || data.id);
       setCompletedGoals(new Set());
@@ -375,11 +200,8 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
       setWorkSessionCount(1);
       startPomodoroPhase("work");
       setPhase("active");
-    } catch {
-      toast.error("Failed to start focus session.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch { toast.error("Failed to start focus session."); }
+    finally { setIsSubmitting(false); }
   }
 
   async function submitRecap() {
@@ -388,397 +210,463 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
       const res = await fetch(`/api/focus-sessions/${sessionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recap,
-          completedGoals: Array.from(completedGoals),
-          sessionsCompleted,
-        }),
+        body: JSON.stringify({ recap, completedGoals: Array.from(completedGoals), sessionsCompleted }),
       });
-
-      if (!res.ok) throw new Error("Failed to save recap");
-
-      toast.success("Focus session completed!");
+      if (!res.ok) throw new Error();
+      toast.success("Focus session saved!");
       setPhase("setup");
-      setSelectedPackId("");
-      setWorkDuration(25);
-      setShortBreakDuration(5);
-      setLongBreakDuration(15);
-      setRounds(4);
-      setGoals([""]);
-      setRecap("");
-      setSessionId("");
-    } catch {
-      toast.error("Failed to save recap.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      setSelectedPackId(""); setWorkDuration(25); setShortBreakDuration(5);
+      setLongBreakDuration(15); setRounds(4); setGoals([]); setGoalInput(""); setRecap(""); setSessionId("");
+    } catch { toast.error("Failed to save recap."); }
+    finally { setIsSubmitting(false); }
   }
 
-  const validGoals = goals.filter((g) => g.trim());
-
-  function phaseLabel(p: PomodoroPhase, ws: number): string {
-    switch (p) {
-      case "work":
-        return `Work ${ws}/${rounds}`;
-      case "shortBreak":
-        return "Short Break";
-      case "longBreak":
-        return "Long Break";
-    }
+  function phaseColor(p: PomodoroPhase) {
+    return p === "work" ? "#f97316" : p === "shortBreak" ? "#22c55e" : "#a855f7";
   }
 
-  function phaseColor(p: PomodoroPhase): string {
-    switch (p) {
-      case "work":
-        return "#f97316";
-      case "shortBreak":
-        return "#22c55e";
-      case "longBreak":
-        return "#a855f7";
-    }
+  function phaseLabel(p: PomodoroPhase, ws: number) {
+    return p === "work" ? `Work ${ws}/${rounds}` : p === "shortBreak" ? "Short Break" : "Long Break";
   }
 
-  function formatSessionTime(dateStr: string) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
-      " - " +
-      d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  }
-
-  // ── Setup Phase ──────────────────────────────────────
-
+  /* ── SETUP ───────────────────────────────────────── */
   if (phase === "setup") {
     return (
-      <div className="relative mx-auto max-w-2xl space-y-0 overflow-hidden">
-        <AnimatedGridPattern className="absolute inset-0 opacity-[0.08] pointer-events-none" numSquares={20} duration={4} />
-        {/* ── Header ────────────────────────────────────── */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex-1" />
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleSettings}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors transition-all duration-200 hover:scale-105 active:scale-95 ${
-                showSettings
-                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                  : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
-              }`}
-              title="Pomodoro Settings"
-            >
-              <SettingsIcon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={toggleHistory}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors transition-all duration-200 hover:scale-105 active:scale-95 ${
-                showHistory
-                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                  : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
-              }`}
-              title="Recent Sessions"
-            >
-              <HistoryIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+      <motion.div
+        initial={{ opacity: 0, y: 16, filter: "blur(8px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="max-w-lg mx-auto space-y-3"
+      >
+        {/* Main setup card */}
+        <div className="relative rounded-2xl border border-amber-500/20 bg-card overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.06] via-transparent to-orange-500/[0.03] pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
 
-        {/* ── Recent Sessions Panel ────────────────────── */}
-        {showHistory && (
-          <div className="mb-6 rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Recent Sessions</h3>
-            {loadingSessions ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+          <div className="relative p-6 space-y-5">
+            {/* Heading */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-xl bg-amber-500/20 blur-xl" />
+                  <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/25">
+                    <Timer className="h-5 w-5 text-amber-500" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="font-display text-base font-semibold text-foreground">Ready to focus?</h2>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">Pick a pack and set your goals</p>
+                </div>
               </div>
-            ) : recentSessions.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No sessions yet</p>
-            ) : (
-              <div className="space-y-2">
-                {recentSessions.map((s) => {
-                  const isCompleted = !!s.completedAt;
-                  const goalsDone = s.completedGoals?.length || 0;
-                  const totalGoals = s.goals?.length || 0;
-                  const pct = totalGoals > 0 ? Math.round((goalsDone / totalGoals) * 100) : 0;
-
-                  return (
-                    <div
-                      key={s._id}
-                      className="flex items-center gap-4 rounded-lg border border-border bg-muted/40 px-4 py-3"
-                    >
-                      {/* Progress circle */}
-                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center">
-                        <svg width="36" height="36" viewBox="0 0 36 36">
-                          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(71,85,105,0.4)" strokeWidth="3" />
-                          <circle
-                            cx="18"
-                            cy="18"
-                            r="15"
-                            fill="none"
-                            stroke={isCompleted ? "#4ade80" : "#f97316"}
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeDasharray={2 * Math.PI * 15}
-                            strokeDashoffset={2 * Math.PI * 15 * (1 - (isCompleted ? 1 : pct / 100))}
-                            transform="rotate(-90 18 18)"
-                          />
-                        </svg>
-                        <span className="absolute text-[9px] font-bold text-foreground">
-                          {isCompleted ? "100" : pct}%
-                        </span>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">
-                          {s.duration} min session
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {isCompleted
-                            ? formatSessionTime(s.completedAt!)
-                            : `${formatSessionTime(s.createdAt)} - ${goalsDone}/${totalGoals} goals`}
-                        </p>
-                      </div>
-
-                      {!isCompleted && (
-                        <span className="rounded-full bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-medium text-orange-400">
-                          In progress
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Pomodoro Settings Panel ──────────────────── */}
-        {showSettings && (
-          <div className="mb-6 rounded-xl border border-border bg-card p-5">
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Pomodoro Settings</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {/* Work */}
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Work</label>
-                <CustomSelect
-                  value={String(workDuration)}
-                  onValueChange={(val) => setWorkDuration(Number(val))}
-                  options={[15, 20, 25, 30, 35, 40, 45, 50, 60, 90, 120].map((m) => ({ value: String(m), label: `${m} min` }))}
-                />
-              </div>
-              {/* Short Break */}
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Short Break</label>
-                <CustomSelect
-                  value={String(shortBreakDuration)}
-                  onValueChange={(val) => setShortBreakDuration(Number(val))}
-                  options={[3, 5, 10, 15].map((m) => ({ value: String(m), label: `${m} min` }))}
-                />
-              </div>
-              {/* Long Break */}
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Long Break</label>
-                <CustomSelect
-                  value={String(longBreakDuration)}
-                  onValueChange={(val) => setLongBreakDuration(Number(val))}
-                  options={[10, 15, 20, 25, 30].map((m) => ({ value: String(m), label: `${m} min` }))}
-                />
-              </div>
-              {/* Rounds */}
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Rounds</label>
-                <CustomSelect
-                  value={String(rounds)}
-                  onValueChange={(val) => setRounds(Number(val))}
-                  options={[2, 3, 4, 5, 6, 8].map((r) => ({ value: String(r), label: `${r} rounds` }))}
-                />
+              {/* Settings + History toggle buttons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => { setShowSettings(!showSettings); setShowHistory(false); }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showSettings ? "bg-amber-500/10 border-amber-500/30 text-amber-500" : "bg-muted/40 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"}`}
+                  title="Timer settings"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchRecentSessions(); setShowSettings(false); }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showHistory ? "bg-amber-500/10 border-amber-500/30 text-amber-500" : "bg-muted/40 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"}`}
+                  title="Session history"
+                >
+                  <History className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ── Main Content ─────────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card px-6 py-10">
-          <div className="text-center">
-            <FocusReadyIcon />
-            <h2 className="text-xl font-bold text-foreground">Ready to focus?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Pick a study pack and dive in</p>
-          </div>
-
-          {/* Study pack select */}
-          <div className="mx-auto mt-6 max-w-sm">
-            <CustomSelect
-              value={selectedPackId}
-              onValueChange={setSelectedPackId}
-              options={[
-                { value: "", label: "Select study pack" },
-                ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
-              ]}
-              placeholder="Select a study pack..."
-            />
-          </div>
-
-          {/* Duration preset cards */}
-          <div className="mx-auto mt-6 grid max-w-md grid-cols-4 gap-3">
-            {presets.map((p, i) => (
-              <DurationCard
-                key={p.label}
-                value={p.value}
-                label={p.label}
-                active={activePreset === i}
-                onClick={() => setActivePreset(i)}
+            {/* Study pack selector */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">Study Pack</label>
+              <CustomSelect
+                value={selectedPackId}
+                onValueChange={setSelectedPackId}
+                options={[
+                  { value: "", label: studyPacks.length === 0 ? "No ready packs yet…" : "Select a study pack…" },
+                  ...studyPacks.map((sp) => ({ value: sp._id, label: sp.title })),
+                ]}
               />
-            ))}
-          </div>
+            </div>
 
-          {/* Start button */}
-          <div className="mx-auto mt-8 max-w-sm flex justify-center">
-            <ShimmerButton onClick={startSession} className="px-8 py-3 text-base font-semibold rounded-2xl min-w-[140px]">
-              <PlayIcon className="h-4 w-4" />
-              {isSubmitting ? "Starting..." : "Start Focus Session"}
-            </ShimmerButton>
+            {/* Pomodoro summary chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { icon: Zap, label: `${workDuration}m work`, color: "text-amber-600 dark:text-amber-400 bg-amber-500/8 border-amber-500/20" },
+                { icon: Coffee, label: `${shortBreakDuration}m break`, color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/8 border-emerald-500/20" },
+                { icon: Coffee, label: `${longBreakDuration}m long`, color: "text-violet-600 dark:text-violet-400 bg-violet-500/8 border-violet-500/20" },
+                { icon: Timer, label: `${rounds} rounds`, color: "text-muted-foreground bg-muted/50 border-border/50" },
+              ].map(({ icon: Icon, label, color }) => (
+                <span key={label} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium ${color}`}>
+                  <Icon className="h-3 w-3" />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Goals */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                Session Goals <span className="normal-case font-normal tracking-normal">(optional)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={goalInput}
+                  onChange={(e) => setGoalInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGoal(); } }}
+                  placeholder="Add a goal and press Enter…"
+                  className="flex-1 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                />
+                <button
+                  onClick={addGoal}
+                  disabled={!goalInput.trim()}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-muted/40 text-muted-foreground hover:text-foreground hover:border-border disabled:opacity-40 transition-all"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <AnimatePresence>
+                {goals.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-1.5 overflow-hidden"
+                  >
+                    {goals.map((g, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/20 px-3 py-2 group"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500/60 shrink-0" />
+                        <span className="flex-1 text-sm text-foreground/80">{g}</span>
+                        <button onClick={() => removeGoal(i)} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-400">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Start button */}
+            <button
+              onClick={startSession}
+              disabled={!selectedPackId || isSubmitting}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-4 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_2px_12px_oklch(0.76_0.17_62_/_30%)] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              {isSubmitting ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Starting…</>
+              ) : (
+                <><Play className="h-4 w-4 fill-white" /> Start Focus Session</>
+              )}
+            </button>
           </div>
         </div>
-      </div>
+
+        {/* Settings panel */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-2xl border border-border/60 bg-card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Settings className="h-4 w-4 text-muted-foreground/60" />
+                  <h3 className="text-[13px] font-semibold text-foreground">Timer Settings</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Work", val: String(workDuration), opts: [15,20,25,30,35,40,45,50,60,90,120], set: (v: string) => setWorkDuration(Number(v)) },
+                    { label: "Short Break", val: String(shortBreakDuration), opts: [3,5,10,15], set: (v: string) => setShortBreakDuration(Number(v)) },
+                    { label: "Long Break", val: String(longBreakDuration), opts: [10,15,20,25,30], set: (v: string) => setLongBreakDuration(Number(v)) },
+                    { label: "Rounds", val: String(rounds), opts: [2,3,4,5,6,8], set: (v: string) => setRounds(Number(v)) },
+                  ].map(({ label, val, opts, set }) => (
+                    <div key={label} className="space-y-1.5">
+                      <label className="text-[11px] font-medium text-muted-foreground/60">{label}</label>
+                      <CustomSelect
+                        value={val}
+                        onValueChange={set}
+                        options={opts.map((o) => ({ value: String(o), label: label === "Rounds" ? `${o} rounds` : `${o} min` }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* History panel */}
+        <AnimatePresence>
+          {showHistory && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-2xl border border-border/60 bg-card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <History className="h-4 w-4 text-muted-foreground/60" />
+                  <h3 className="text-[13px] font-semibold text-foreground">Recent Sessions</h3>
+                </div>
+                {loadingSessions ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                  </div>
+                ) : recentSessions.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-4">No sessions yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentSessions.map((s) => {
+                      const done = s.completedGoals?.length ?? 0;
+                      const total = s.goals?.length ?? 0;
+                      const pct = total > 0 ? Math.round((done / total) * 100) : 100;
+                      const isCompleted = !!s.completedAt;
+                      return (
+                        <div key={s._id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/30 px-4 py-3">
+                          {/* Ring progress */}
+                          <svg width="34" height="34" viewBox="0 0 34 34" className="shrink-0">
+                            <circle cx="17" cy="17" r="13" fill="none" strokeWidth="3" className="stroke-muted" />
+                            <circle cx="17" cy="17" r="13" fill="none" stroke={isCompleted ? "#22c55e" : "#f97316"}
+                              strokeWidth="3" strokeLinecap="round"
+                              strokeDasharray={2 * Math.PI * 13}
+                              strokeDashoffset={2 * Math.PI * 13 * (1 - pct / 100)}
+                              transform="rotate(-90 17 17)" />
+                            <text x="17" y="17" textAnchor="middle" dominantBaseline="central"
+                              fontSize="7" fontWeight="700" fill="currentColor" className="fill-foreground">
+                              {pct}%
+                            </text>
+                          </svg>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12.5px] font-medium text-foreground">
+                              {s.duration}m session · {s.sessionsCompleted ?? 0} pomodoros
+                            </p>
+                            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                              {fmtDate(isCompleted ? s.completedAt! : s.createdAt)}
+                            </p>
+                          </div>
+                          {!isCompleted && (
+                            <span className="shrink-0 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+                              incomplete
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     );
   }
 
-  // ── Active Phase ─────────────────────────────────────
-
+  /* ── ACTIVE ──────────────────────────────────────── */
   if (phase === "active") {
     const color = phaseColor(pomodoroPhase);
+    const phaseColors = {
+      work: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/25",
+      shortBreak: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
+      longBreak: "text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/25",
+    };
 
     return (
-      <div className="mx-auto max-w-2xl">
-            {/* Phase progress dots */}
-          <div className="flex items-center justify-center gap-2">
-            {Array.from({ length: rounds }).map((_, i) => {
-              const isActive = i < sessionsCompleted % rounds ||
-                (pomodoroPhase === "work" && i < workSessionCount - 1);
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, filter: "blur(8px)" }}
+        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="max-w-lg mx-auto space-y-4"
+      >
+        {/* Timer card */}
+        <div className="relative rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${color}30` }}>
+          {/* Colored top bar */}
+          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
+          {/* Subtle bg glow */}
+          <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}08 0%, transparent 70%)` }} />
+
+          <div className="relative p-6 space-y-5">
+            {/* Phase badge + dots */}
+            <div className="flex flex-col items-center gap-3">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={pomodoroPhase}
+                  initial={{ opacity: 0, y: -8, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11.5px] font-semibold ${phaseColors[pomodoroPhase]}`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: color }} />
+                  {phaseLabel(pomodoroPhase, workSessionCount)}
+                </motion.span>
+              </AnimatePresence>
+
+              <PhaseDots
+                rounds={rounds}
+                sessionsCompleted={sessionsCompleted}
+                pomodoroPhase={pomodoroPhase}
+                workSessionCount={workSessionCount}
+                color={color}
+              />
+            </div>
+
+            {/* Ring timer */}
+            <div className="flex justify-center">
+              <RingTimer secondsLeft={secondsLeft} totalSeconds={totalSeconds} color={color} />
+            </div>
+
+            {/* Pomodoros completed */}
+            <p className="text-center text-xs text-muted-foreground/60 tabular-nums">
+              {sessionsCompleted} pomodoro{sessionsCompleted !== 1 ? "s" : ""} completed this session
+            </p>
+          </div>
+        </div>
+
+        {/* Goals card */}
+        {goals.length > 0 && (
+          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-3">Session Goals</h3>
+            {goals.map((goal, idx) => {
+              const done = completedGoals.has(idx);
               return (
-                <div
-                  key={i}
-                  className={`h-2 w-8 rounded-full transition-colors ${!isActive ? "bg-border" : ""}`}
-                  style={isActive ? { backgroundColor: color } : undefined}
-                />
+                <button
+                  key={idx}
+                  onClick={() => setCompletedGoals((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(idx)) next.delete(idx); else next.add(idx);
+                    return next;
+                  })}
+                  className={`w-full flex items-center gap-3 rounded-xl border px-4 py-2.5 text-left text-[13px] transition-all ${
+                    done
+                      ? "border-emerald-500/25 bg-emerald-500/8 text-emerald-600 dark:text-emerald-400"
+                      : "border-border/50 bg-muted/30 text-foreground hover:border-border"
+                  }`}
+                >
+                  {done
+                    ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                    : <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                  }
+                  <span className={done ? "line-through opacity-70" : ""}>{goal}</span>
+                </button>
               );
             })}
           </div>
+        )}
 
-          <div className="mt-3 text-center text-sm font-medium" style={{ color }}>
-            {phaseLabel(pomodoroPhase, workSessionCount)}
-          </div>
-
-          {/* Timer */}
-          <div className="my-6">
-            <SVGTimer secondsLeft={secondsLeft} totalSeconds={totalSeconds} color={color} />
-          </div>
-
-          <div className="text-center text-sm text-muted-foreground">
-            {sessionsCompleted} pomodoro{sessionsCompleted !== 1 ? "s" : ""} completed
-          </div>
-
-          {/* Goals */}
-          {validGoals.length > 0 && (
-            <div className="mt-6 space-y-2">
-              <h3 className="text-sm font-medium text-foreground">Goals</h3>
-              {validGoals.map((goal, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => toggleGoalComplete(idx)}
-                  className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                    completedGoals.has(idx)
-                      ? "border-green-500/30 bg-green-500/10 text-green-400 line-through"
-                      : "border-border bg-muted/40 text-foreground hover:border-foreground/20"
-                  }`}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs">
-                    {completedGoals.has(idx) ? (
-                      <svg className="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : null}
-                  </span>
-                  {goal}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* End session button */}
-          <button
-            onClick={completeSession}
-            className="mt-6 w-full rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            End Session
-          </button>
-      </div>
+        {/* End session */}
+        <button
+          onClick={() => setPhase("complete")}
+          className="w-full rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:border-border transition-all"
+        >
+          End Session Early
+        </button>
+      </motion.div>
     );
   }
 
-  // ── Complete Phase ───────────────────────────────────
+  /* ── COMPLETE ────────────────────────────────────── */
+  const completedCount = completedGoals.size;
+  const totalGoals = goals.length;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <GlowingStarsBackgroundCard className="w-full max-w-none max-h-none h-auto">
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/15">
-            <svg className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+    <motion.div
+      initial={{ opacity: 0, y: 16, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="max-w-lg mx-auto space-y-4"
+    >
+      {/* Celebration card */}
+      <div className="relative rounded-2xl border border-emerald-500/20 bg-card overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.06] via-transparent to-emerald-500/[0.03] pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-green-400 to-transparent" />
+
+        <div className="relative p-6 text-center">
+          <div className="relative mx-auto mb-4 h-14 w-14">
+            <div className="absolute inset-0 rounded-2xl bg-emerald-500/20 blur-xl" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-500/10 border border-emerald-500/25 mx-auto">
+              <Trophy className="h-6 w-6 text-emerald-500" />
+            </div>
           </div>
-          <SparklesText text="Session Complete!" className="text-2xl font-bold text-amber-400" />
-          <p className="mt-1 text-sm text-muted-foreground">
-            You completed {sessionsCompleted} pomodoro{sessionsCompleted !== 1 ? "s" : ""}
+          <h2 className="font-display text-xl font-bold text-foreground">Session Complete!</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {sessionsCompleted} pomodoro{sessionsCompleted !== 1 ? "s" : ""} · {sessionsCompleted * workDuration} minutes of focus
           </p>
-        </div>
 
-        {/* Goals summary */}
-        {validGoals.length > 0 && (
-          <div className="mt-6 space-y-2">
-            <h3 className="text-sm font-medium text-foreground">Goals Summary</h3>
-            {validGoals.map((goal, idx) => (
-              <div
-                key={idx}
-                className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
-                  completedGoals.has(idx)
-                    ? "border-green-500/30 bg-green-500/10 text-green-400"
-                    : "border-border bg-muted/40 text-muted-foreground"
-                }`}
-              >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs">
-                  {completedGoals.has(idx) ? (
-                    <svg className="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : null}
-                </span>
-                {goal}
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              {completedGoals.size} of {validGoals.length} goals completed
-            </p>
+          {/* Stats chips */}
+          <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 text-xs font-medium">
+              <Zap className="h-3.5 w-3.5" />
+              {sessionsCompleted} pomodoros
+            </span>
+            {totalGoals > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/8 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 text-xs font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {completedCount}/{totalGoals} goals
+              </span>
+            )}
           </div>
-        )}
-
-        {/* Recap */}
-        <div className="mt-6 space-y-2">
-          <label className="text-sm font-medium text-foreground">Session Recap</label>
-          <textarea
-            value={recap}
-            onChange={(e) => setRecap(e.target.value)}
-            placeholder="What did you accomplish? What do you want to focus on next?"
-            rows={4}
-            className="w-full rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
-          />
         </div>
+      </div>
 
+      {/* Goals summary */}
+      {goals.length > 0 && (
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-3">Goals Summary</h3>
+          {goals.map((goal, idx) => {
+            const done = completedGoals.has(idx);
+            return (
+              <div key={idx} className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-[13px] ${
+                done
+                  ? "border-emerald-500/25 bg-emerald-500/8 text-emerald-600 dark:text-emerald-400"
+                  : "border-border/50 bg-muted/20 text-muted-foreground"
+              }`}>
+                {done
+                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  : <Circle className="h-4 w-4 text-muted-foreground/30 shrink-0" />
+                }
+                <span className={done ? "" : "opacity-60"}>{goal}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Recap + save */}
+      <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">Session Recap</h3>
+        <textarea
+          value={recap}
+          onChange={(e) => setRecap(e.target.value)}
+          placeholder="What did you accomplish? What will you focus on next?"
+          rows={3}
+          className="w-full rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all resize-none"
+        />
         <button
           onClick={submitRecap}
           disabled={isSubmitting}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-500/25 transition-all hover:shadow-xl hover:shadow-orange-500/30 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 px-4 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_2px_12px_oklch(0.52_0.18_142_/_30%)] hover:opacity-90 disabled:opacity-50 transition-all"
         >
-          {isSubmitting ? "Saving..." : "Save & Finish"}
+          {isSubmitting
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+            : <><CheckCircle2 className="h-4 w-4" /> Save & Finish</>
+          }
         </button>
-      </GlowingStarsBackgroundCard>
-    </div>
+      </div>
+    </motion.div>
   );
 }

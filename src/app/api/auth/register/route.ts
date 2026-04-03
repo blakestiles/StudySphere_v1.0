@@ -34,15 +34,15 @@ export async function POST(request: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
 
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
-
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    await User.findByIdAndUpdate(user._id, { emailVerificationToken: verificationToken });
 
     try {
       const verifyUrl = `${process.env.AUTH_URL}/verify-email?token=${verificationToken}`;

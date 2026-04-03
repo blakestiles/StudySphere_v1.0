@@ -2,27 +2,14 @@
 
 import { useState } from "react";
 import {
-  Plus,
-  Trash2,
-  RefreshCw,
-  Sparkles,
-  Trophy,
-  Target,
-  X,
-  Loader2,
-  Ban,
+  Plus, Trash2, RefreshCw, Sparkles, Trophy,
+  Target, X, Loader2, Ban, CalendarClock, CheckCircle2,
 } from "lucide-react";
-import { SlideButton } from "@/components/ui/slide-button";
-import BlurFade from "@/components/ui/blur-fade";
-import ShimmerButton from "@/components/ui/shimmer-button";
-import { AnimatedGenerateButton } from "@/components/ui/animated-generate-button";
-import TextShimmer from "@/components/ui/text-shimmer";
+import { motion, AnimatePresence } from "motion/react";
 import { differenceInDays } from "date-fns";
 import CustomSelect from "@/components/ui/custom-select";
 import DatePicker from "@/components/ui/date-picker";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
 interface Goal {
   _id: string;
@@ -42,7 +29,7 @@ interface GoalTrackerProps {
   studyPacks: { _id: string; title: string }[];
 }
 
-const targetTypeLabels: Record<string, string> = {
+const TARGET_TYPE_LABELS: Record<string, string> = {
   flashcards_reviewed: "Flashcards Reviewed",
   quiz_score: "Quiz Score %",
   study_minutes: "Study Minutes",
@@ -51,6 +38,200 @@ const targetTypeLabels: Record<string, string> = {
   custom: "Custom",
 };
 
+// ── Deadline chip ──────────────────────────────────────
+
+function DeadlineChip({ deadline, status }: { deadline: string; status: string }) {
+  if (status !== "active") return null;
+  const days = differenceInDays(new Date(deadline), new Date());
+  const cls =
+    days < 0
+      ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+      : days <= 3
+      ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+      : "bg-muted/40 border-border/40 text-muted-foreground";
+  const label =
+    days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `${days}d left`;
+  return (
+    <span className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10.5px] font-medium ${cls}`}>
+      <CalendarClock className="h-3 w-3" />
+      {label}
+    </span>
+  );
+}
+
+// ── Goal Card ──────────────────────────────────────────
+
+function GoalCard({
+  goal,
+  index,
+  suggestingId,
+  onGetAiTip,
+  onUpdateStatus,
+  onDelete,
+}: {
+  goal: Goal;
+  index: number;
+  suggestingId: string | null;
+  onGetAiTip: (id: string) => void;
+  onUpdateStatus: (id: string, status: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const progress =
+    goal.targetValue === 0 ? 0 : Math.min(100, Math.round((goal.currentValue / goal.targetValue) * 100));
+
+  const isActive = goal.status === "active";
+  const isCompleted = goal.status === "completed";
+
+  const statusPill = isActive
+    ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+    : isCompleted
+    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+    : "bg-muted/40 border-border/40 text-muted-foreground";
+
+  const barColor = isActive
+    ? "bg-gradient-to-r from-amber-500 to-orange-400"
+    : isCompleted
+    ? "bg-emerald-500"
+    : "bg-muted-foreground/30";
+
+  const leftAccent = isActive
+    ? "border-l-amber-500/50"
+    : isCompleted
+    ? "border-l-emerald-500/50"
+    : "border-l-border/40";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={`rounded-2xl border border-border/60 border-l-2 bg-card p-4 space-y-3 ${leftAccent}`}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-[13.5px] font-semibold text-foreground">{goal.title}</h3>
+            <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${statusPill}`}>
+              {goal.status}
+            </span>
+            {goal.deadline && <DeadlineChip deadline={goal.deadline} status={goal.status} />}
+          </div>
+          {goal.description && (
+            <p className="text-[12px] text-muted-foreground/70 mt-0.5 leading-relaxed">{goal.description}</p>
+          )}
+        </div>
+        <button
+          onClick={() => onDelete(goal._id)}
+          className="shrink-0 rounded-lg p-1.5 text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-all"
+          title="Delete"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Progress */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground/70">{TARGET_TYPE_LABELS[goal.targetType] ?? goal.targetType}</span>
+          <span className="font-semibold text-foreground">
+            {goal.currentValue}/{goal.targetValue}
+            {goal.targetType === "quiz_score" ? "%" : ""}
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+          <motion.div
+            className={`h-full rounded-full ${barColor}`}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.7, ease: "easeOut", delay: index * 0.05 + 0.1 }}
+          />
+        </div>
+        <div className="flex justify-end">
+          <span className={`text-[11px] font-bold ${
+            progress === 100
+              ? "text-emerald-600 dark:text-emerald-400"
+              : isActive
+              ? "text-amber-600 dark:text-amber-400"
+              : "text-muted-foreground"
+          }`}>
+            {progress}%
+          </span>
+        </div>
+      </div>
+
+      {/* AI suggestion */}
+      <AnimatePresence>
+        {goal.aiSuggestion && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Sparkles className="h-3 w-3 text-amber-500" />
+                <span className="text-[10.5px] font-semibold text-amber-600 dark:text-amber-400">AI Tip</span>
+              </div>
+              <p className="text-[12px] leading-relaxed text-foreground/80">{goal.aiSuggestion}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Actions */}
+      {isActive && (
+        <div className="flex items-center gap-2 pt-0.5">
+          <button
+            onClick={() => onGetAiTip(goal._id)}
+            disabled={suggestingId === goal._id}
+            className="flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11.5px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {suggestingId === goal._id
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <Sparkles className="h-3 w-3" />
+            }
+            {suggestingId === goal._id ? "Thinking…" : "AI Tip"}
+          </button>
+          <button
+            onClick={() => onUpdateStatus(goal._id, "completed")}
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11.5px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15 transition-all"
+          >
+            <CheckCircle2 className="h-3 w-3" />
+            Complete
+          </button>
+          <button
+            onClick={() => onUpdateStatus(goal._id, "abandoned")}
+            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11.5px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/40 transition-all ml-auto"
+          >
+            <Ban className="h-3 w-3" />
+            Abandon
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Section header ─────────────────────────────────────
+
+function SectionHeader({ icon: Icon, label, count, iconClass }: {
+  icon: React.ElementType; label: string; count: number; iconClass: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`flex h-6 w-6 items-center justify-center rounded-md ${iconClass}`}>
+        <Icon className="h-3.5 w-3.5" />
+      </div>
+      <span className="text-[13px] font-semibold text-foreground">{label}</span>
+      <span className="ml-1 rounded-full bg-muted/50 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">{count}</span>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────
+
 export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
   const [goals, setGoals] = useState(initial);
   const [showForm, setShowForm] = useState(false);
@@ -58,12 +239,15 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
   const [creating, setCreating] = useState(false);
   const [suggestingId, setSuggestingId] = useState<string | null>(null);
 
-  // Form state
   const [title, setTitle] = useState("");
   const [targetType, setTargetType] = useState("flashcards_reviewed");
   const [targetValue, setTargetValue] = useState("");
   const [deadline, setDeadline] = useState("");
   const [description, setDescription] = useState("");
+
+  const active = goals.filter((g) => g.status === "active");
+  const completed = goals.filter((g) => g.status === "completed");
+  const abandoned = goals.filter((g) => g.status === "abandoned");
 
   const refreshProgress = async () => {
     setRefreshing(true);
@@ -101,11 +285,8 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
         const data = await res.json();
         setGoals((prev) => [data.goal, ...prev]);
         setShowForm(false);
-        setTitle("");
-        setTargetType("flashcards_reviewed");
-        setTargetValue("");
-        setDeadline("");
-        setDescription("");
+        setTitle(""); setTargetType("flashcards_reviewed");
+        setTargetValue(""); setDeadline(""); setDescription("");
         toast.success("Goal created");
       }
     } catch {
@@ -162,244 +343,179 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
     }
   };
 
-  const active = goals.filter((g) => g.status === "active");
-  const completed = goals.filter((g) => g.status === "completed");
-  const abandoned = goals.filter((g) => g.status === "abandoned");
-
-  const getProgress = (g: Goal) => {
-    if (g.targetValue === 0) return 0;
-    return Math.min(100, Math.round((g.currentValue / g.targetValue) * 100));
-  };
-
-  const renderGoalCard = (goal: Goal, index: number) => {
-    const progress = getProgress(goal);
-    const daysLeft = goal.deadline
-      ? differenceInDays(new Date(goal.deadline), new Date())
-      : null;
-
-    return (
-      <BlurFade key={goal._id} delay={0.05 * index}>
-      <div
-        className="rounded-xl border border-border bg-card p-4 space-y-3"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground">{goal.title}</h3>
-            {goal.description && (
-              <p className="text-sm text-muted-foreground mt-0.5">{goal.description}</p>
-            )}
-          </div>
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              goal.status === "active"
-                ? "bg-blue-500/10 text-blue-500"
-                : goal.status === "completed"
-                ? "bg-green-500/10 text-green-500"
-                : "bg-gray-500/10 text-gray-500"
-            }`}
-          >
-            {goal.status}
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-            <span>{targetTypeLabels[goal.targetType] || goal.targetType}</span>
-            <span>
-              {goal.currentValue} / {goal.targetValue}
-              {goal.targetType === "quiz_score" ? "%" : ""}
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-xs font-medium text-foreground">{progress}%</span>
-            {daysLeft !== null && goal.status === "active" && (
-              <span
-                className={`text-xs ${
-                  daysLeft < 0
-                    ? "text-red-500"
-                    : daysLeft <= 3
-                    ? "text-yellow-500"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {daysLeft < 0
-                  ? `${Math.abs(daysLeft)} days overdue`
-                  : daysLeft === 0
-                  ? "Due today"
-                  : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* AI Suggestion */}
-        {goal.aiSuggestion && (
-          <div className="rounded-lg bg-orange-500/5 border border-orange-500/10 p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Sparkles className="h-3.5 w-3.5 text-orange-500" />
-              <span className="text-xs font-medium text-orange-500">AI Tip</span>
-            </div>
-            <p className="text-sm text-foreground">{goal.aiSuggestion}</p>
-          </div>
-        )}
-
-        {/* Actions */}
-        {goal.status === "active" && (
-          <div className="flex items-center gap-2 pt-1">
-            <AnimatedGenerateButton
-              isLoading={suggestingId === goal._id}
-              idleLabel="Get AI Tip"
-              loadingLabel="Thinking..."
-              onClick={() => getAiSuggestion(goal._id)}
-              disabled={suggestingId === goal._id}
-              className="mt-0"
-            />
-            <button
-              onClick={() => updateStatus(goal._id, "abandoned")}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <Ban className="h-3.5 w-3.5" />
-              Abandon
-            </button>
-            <button
-              onClick={() => deleteGoal(goal._id)}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors ml-auto"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-        {goal.status !== "active" && (
-          <div className="flex justify-end pt-1">
-            <button
-              onClick={() => deleteGoal(goal._id)}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
-      </BlurFade>
-    );
+  const sharedCardProps = {
+    suggestingId,
+    onGetAiTip: getAiSuggestion,
+    onUpdateStatus: updateStatus,
+    onDelete: deleteGoal,
   };
 
   return (
-    <div className="space-y-6">
-      {/* Actions */}
-      <div className="flex items-center gap-3">
-        <SlideButton onClick={refreshProgress} disabled={refreshing}>
-          {refreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
-          Refresh Progress
-        </SlideButton>
-        <ShimmerButton onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl">
-          {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showForm ? "Cancel" : "New Goal"}
-        </ShimmerButton>
-      </div>
-
-      {/* Create form */}
-      {showForm && (
-        <form onSubmit={createGoal} className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <Input
-            type="text"
-            placeholder="Goal title..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="w-full"
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <CustomSelect
-              value={targetType}
-              onValueChange={setTargetType}
-              options={Object.entries(targetTypeLabels).map(([val, label]) => ({ value: val, label }))}
-            />
-            <Input
-              type="number"
-              placeholder="Target value"
-              value={targetValue}
-              onChange={(e) => setTargetValue(e.target.value)}
-              min="1"
-              required
-            />
-            <DatePicker
-              value={deadline}
-              onChange={setDeadline}
-              placeholder="Deadline (optional)"
-            />
-          </div>
-          <Textarea
-            placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="resize-none"
-          />
-          <button
-            type="submit"
-            disabled={creating}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
-            Create Goal
-          </button>
-        </form>
+    <div className="space-y-5">
+      {/* ── Stats summary ──────────────────────────────── */}
+      {goals.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { icon: Target, label: "Active", count: active.length, cls: "bg-amber-500/10 border-amber-500/20 text-amber-500" },
+            { icon: Trophy, label: "Completed", count: completed.length, cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" },
+            { icon: Ban, label: "Abandoned", count: abandoned.length, cls: "bg-muted/40 border-border/40 text-muted-foreground" },
+          ].map(({ icon: Icon, label, count, cls }) => (
+            <div key={label} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3">
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${cls}`}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xl font-bold font-display text-foreground leading-none">{count}</p>
+                <p className="text-[10.5px] text-muted-foreground/60 mt-0.5">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* Active Goals */}
+      {/* ── Toolbar ────────────────────────────────────── */}
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={refreshProgress}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3.5 py-2 text-[12.5px] font-medium text-foreground hover:bg-muted/40 disabled:opacity-50 transition-all"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_10px_oklch(0.76_0.17_62_/_25%)] hover:opacity-90 transition-all"
+        >
+          {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showForm ? "Cancel" : "New Goal"}
+        </button>
+      </div>
+
+      {/* ── Create form ────────────────────────────────── */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <form
+              onSubmit={createGoal}
+              className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-card"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.04] via-transparent to-transparent pointer-events-none" />
+              <div className="relative p-5 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10 border border-amber-500/20">
+                    <Target className="h-3.5 w-3.5 text-amber-500" />
+                  </div>
+                  <span className="text-[13px] font-semibold text-foreground">New Goal</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Goal title…"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <CustomSelect
+                    value={targetType}
+                    onValueChange={setTargetType}
+                    options={Object.entries(TARGET_TYPE_LABELS).map(([val, label]) => ({ value: val, label }))}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Target value"
+                    value={targetValue}
+                    onChange={(e) => setTargetValue(e.target.value)}
+                    min="1"
+                    required
+                    className="w-full rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                  />
+                  <DatePicker
+                    value={deadline}
+                    onChange={setDeadline}
+                    placeholder="Deadline (optional)"
+                  />
+                </div>
+                <textarea
+                  placeholder="Description (optional)"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-all"
+                >
+                  {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
+                  Create Goal
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Active Goals ───────────────────────────────── */}
       <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground mb-3">
-          <Target className="h-5 w-5 text-blue-500" />
-          <TextShimmer className="text-lg font-semibold">Active Goals ({active.length})</TextShimmer>
-        </h2>
+        <SectionHeader
+          icon={Target}
+          label="Active Goals"
+          count={active.length}
+          iconClass="bg-amber-500/10 border border-amber-500/20 text-amber-500"
+        />
         {active.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-              <Target className="h-6 w-6 text-orange-400/60" />
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <Target className="h-6 w-6 text-amber-500/60" />
             </div>
-            <p className="text-sm font-medium text-foreground/70">No active goals</p>
-            <p className="mt-1 text-xs text-muted-foreground">Set a goal above to start tracking your progress!</p>
+            <div>
+              <p className="text-sm font-semibold text-foreground">No active goals</p>
+              <p className="mt-1 text-xs text-muted-foreground/60">Create a goal above to start tracking your progress.</p>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {active.map((g, i) => renderGoalCard(g, i))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {active.map((g, i) => <GoalCard key={g._id} goal={g} index={i} {...sharedCardProps} />)}
           </div>
         )}
       </div>
 
-      {/* Completed Goals */}
+      {/* ── Completed Goals ────────────────────────────── */}
       {completed.length > 0 && (
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground mb-3">
-            <Trophy className="h-5 w-5 text-green-500" />
-            <TextShimmer className="text-lg font-semibold">Completed Goals ({completed.length})</TextShimmer>
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {completed.map((g, i) => renderGoalCard(g, i))}
+          <SectionHeader
+            icon={Trophy}
+            label="Completed"
+            count={completed.length}
+            iconClass="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500"
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {completed.map((g, i) => <GoalCard key={g._id} goal={g} index={i} {...sharedCardProps} />)}
           </div>
         </div>
       )}
 
-      {/* Abandoned Goals */}
+      {/* ── Abandoned Goals ────────────────────────────── */}
       {abandoned.length > 0 && (
         <div>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-3">
-            <TextShimmer className="text-sm font-semibold">Abandoned ({abandoned.length})</TextShimmer>
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {abandoned.map((g, i) => renderGoalCard(g, i))}
+          <SectionHeader
+            icon={Ban}
+            label="Abandoned"
+            count={abandoned.length}
+            iconClass="bg-muted/40 border border-border/40 text-muted-foreground"
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {abandoned.map((g, i) => <GoalCard key={g._id} goal={g} index={i} {...sharedCardProps} />)}
           </div>
         </div>
       )}

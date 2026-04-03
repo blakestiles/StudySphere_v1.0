@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
-import BlurFade from "@/components/ui/blur-fade";
-import TextShimmer from "@/components/ui/text-shimmer";
+import { motion } from "motion/react";
+import {
+  Flame,
+  Clock,
+  PenLine,
+  BookOpen,
+  BarChart3,
+} from "lucide-react";
 import {
   LineChart,
   BarChart,
@@ -62,30 +67,38 @@ function StatCard({
   icon,
   value,
   label,
-  color,
-  streak,
+  iconBg,
+  iconBorder,
+  iconColor,
+  delay,
 }: {
   icon: React.ReactNode;
   value: number | string;
   label: string;
-  color: string;
-  streak?: boolean;
+  iconBg: string;
+  iconBorder: string;
+  iconColor: string;
+  delay: number;
 }) {
   return (
-      <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 h-full">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: `${color}15`, color }}
-        >
-          {icon}
-        </div>
-        <div>
-          <TextShimmer className="text-3xl font-bold text-white" duration={4}>
-            {String(value)}
-          </TextShimmer>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4"
+    >
+      <div
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg} ${iconBorder} border ${iconColor}`}
+      >
+        {icon}
       </div>
+      <div>
+        <p className="text-2xl font-bold font-display text-foreground leading-none">
+          {String(value)}
+        </p>
+        <p className="text-[11px] text-muted-foreground/70 mt-0.5">{label}</p>
+      </div>
+    </motion.div>
   );
 }
 
@@ -101,108 +114,15 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-      <div className="flex flex-col rounded-xl border border-border bg-card p-5 h-full">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-orange-400">&#9679;</span>
-          <TextShimmer className="text-base font-semibold text-white/80" duration={4}>
-            {title}
-          </TextShimmer>
-          {subtitle && (
-            <span className="text-xs text-muted-foreground">{subtitle}</span>
-          )}
-        </div>
-        <div className="min-h-0 flex-1">{children}</div>
+    <div className="flex flex-col rounded-2xl border border-border/60 bg-card p-5 h-full">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-amber-500" />
+        <span className="text-[13px] font-semibold text-foreground">{title}</span>
+        {subtitle && (
+          <span className="ml-auto text-[11px] text-muted-foreground/60">{subtitle}</span>
+        )}
       </div>
-  );
-}
-
-// ── Donut Chart (Canvas) ───────────────────────────────
-
-function DonutChart({
-  data,
-}: {
-  data: { name: string; value: number; color: string }[];
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const isDark = document.documentElement.classList.contains("dark");
-
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const cx = w / 2;
-    const cy = h / 2;
-    const outerR = Math.min(cx, cy) - 10;
-    const innerR = outerR * 0.65;
-    const total = data.reduce((s, d) => s + d.value, 0);
-
-    if (total === 0) {
-      // Draw empty ring
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
-      ctx.arc(cx, cy, innerR, 0, Math.PI * 2, true);
-      ctx.fillStyle = isDark ? "rgba(71,85,105,0.3)" : "rgba(203,213,225,0.4)";
-      ctx.fill();
-
-      ctx.font = "600 14px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
-      ctx.fillText("No data", cx, cy + 5);
-      return;
-    }
-
-    let startAngle = -Math.PI / 2;
-
-    for (const segment of data) {
-      const sweepAngle = (segment.value / total) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerR, startAngle, startAngle + sweepAngle);
-      ctx.arc(cx, cy, innerR, startAngle + sweepAngle, startAngle, true);
-      ctx.closePath();
-      ctx.fillStyle = segment.color;
-      ctx.fill();
-      startAngle += sweepAngle;
-    }
-
-    // Center text
-    ctx.font = "700 22px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillStyle = isDark ? "#f1f5f9" : "#1e293b";
-    ctx.fillText(String(total), cx, cy + 3);
-    ctx.font = "400 11px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
-    ctx.fillText("Total Cards", cx, cy + 20);
-  }, [data]);
-
-  return (
-    <div className="flex items-center gap-4">
-      <canvas
-        ref={canvasRef}
-        className="h-[160px] w-[160px]"
-        style={{ width: 160, height: 160 }}
-      />
-      <div className="flex flex-col gap-2">
-        {data.map((d) => (
-          <div key={d.name} className="flex items-center gap-2 text-xs">
-            <div
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: d.color }}
-            />
-            <span className="text-muted-foreground">{d.name}</span>
-            <span className="ml-auto font-medium text-foreground">{d.value}</span>
-          </div>
-        ))}
-      </div>
+      <div className="min-h-0 flex-1">{children}</div>
     </div>
   );
 }
@@ -223,39 +143,6 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-// ── Icons ──────────────────────────────────────────────
-
-function CardsIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <path d="M8 21h8M12 17v4" />
-    </svg>
-  );
-}
-function ClockIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-function PenIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  );
-}
-function FlameIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M12 2c.5 4-2 6-2 10a4 4 0 008 0c0-4-2.5-6-2-10M12 12a2 2 0 00-2 2c0 1.1.9 2 2 2s2-.9 2-2a2 2 0 00-2-2z" />
-    </svg>
-  );
-}
-
 // ── Main Component ─────────────────────────────────────
 
 export default function AnalyticsDashboard() {
@@ -264,7 +151,7 @@ export default function AnalyticsDashboard() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const gridStroke = isDark ? "rgba(71,85,105,0.3)" : "rgba(203,213,225,0.6)";
+  const gridStroke = isDark ? "rgba(71,85,105,0.25)" : "rgba(203,213,225,0.5)";
   const tickFill = isDark ? "#64748b" : "#94a3b8";
   const dotStroke = isDark ? "#1e293b" : "#ffffff";
 
@@ -278,9 +165,9 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-border bg-background py-20">
+      <div className="flex items-center justify-center rounded-2xl border border-border/60 bg-card py-20">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading analytics...</p>
         </div>
       </div>
@@ -289,8 +176,9 @@ export default function AnalyticsDashboard() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-border bg-background py-20">
-        <p className="text-muted-foreground">Failed to load analytics.</p>
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card py-20">
+        <BarChart3 className="h-8 w-8 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">Failed to load analytics.</p>
       </div>
     );
   }
@@ -329,51 +217,98 @@ export default function AnalyticsDashboard() {
   ];
 
   return (
-    <div className="relative space-y-5">
-      <AnimatedGridPattern className="absolute inset-0 opacity-[0.05] pointer-events-none" numSquares={20} />
+    <div className="space-y-4">
+      {/* ── Streak Hero Card ─────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0 }}
+        className="relative rounded-2xl border border-amber-500/20 bg-card overflow-hidden p-5"
+      >
+        {/* Top gradient bar */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
+        {/* Background glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.05] via-transparent to-orange-500/[0.03] pointer-events-none" />
 
-      {/* ── Top Stat Cards ─────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <BlurFade delay={0 * 0.08}>
-          <StatCard
-            icon={<CardsIcon />}
-            value={totalCardsReviewed}
-            label="Cards Reviewed"
-            color="#fb923c"
-          />
-        </BlurFade>
-        <BlurFade delay={1 * 0.08}>
-          <StatCard
-            icon={<ClockIcon />}
-            value={totalStudyMins}
-            label="Study Minutes"
-            color="#60a5fa"
-          />
-        </BlurFade>
-        <BlurFade delay={2 * 0.08}>
-          <StatCard
-            icon={<PenIcon />}
-            value={data.totals.essays}
-            label="Essays Written"
-            color="#c084fc"
-          />
-        </BlurFade>
-        <BlurFade delay={3 * 0.08}>
-          <StatCard
-            icon={<FlameIcon />}
-            value={data.streak.current}
-            label="Day Streak"
-            color="#f97316"
-            streak
-          />
-        </BlurFade>
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left: streak count */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500">
+              <Flame className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-wide mb-0.5">
+                Day Streak
+              </p>
+              <p className="font-display text-5xl font-bold text-foreground leading-none">
+                {data.streak.current}
+              </p>
+            </div>
+          </div>
+
+          {/* Right: mini chips */}
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
+              <Flame className="h-3 w-3 text-amber-500" />
+              Longest: {data.streak.longest} days
+            </div>
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
+              <Clock className="h-3 w-3 text-blue-400" />
+              {totalStudyMins} study mins
+            </div>
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
+              <BookOpen className="h-3 w-3 text-emerald-400" />
+              {totalCardsReviewed} cards reviewed
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── 4 Stat Cards ─────────────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          icon={<BookOpen className="h-4 w-4" />}
+          value={totalCardsReviewed}
+          label="Cards Reviewed"
+          iconBg="bg-amber-500/10"
+          iconBorder="border-amber-500/20"
+          iconColor="text-amber-500"
+          delay={0.06}
+        />
+        <StatCard
+          icon={<Clock className="h-4 w-4" />}
+          value={totalStudyMins}
+          label="Study Minutes"
+          iconBg="bg-blue-500/10"
+          iconBorder="border-blue-500/20"
+          iconColor="text-blue-400"
+          delay={0.12}
+        />
+        <StatCard
+          icon={<PenLine className="h-4 w-4" />}
+          value={data.totals.essays}
+          label="Essays Written"
+          iconBg="bg-purple-500/10"
+          iconBorder="border-purple-500/20"
+          iconColor="text-purple-400"
+          delay={0.18}
+        />
+        <StatCard
+          icon={<BarChart3 className="h-4 w-4" />}
+          value={data.totals.quizzes}
+          label="Quizzes Taken"
+          iconBg="bg-emerald-500/10"
+          iconBorder="border-emerald-500/20"
+          iconColor="text-emerald-400"
+          delay={0.24}
+        />
       </div>
 
-      {/* ── 2x2 Chart Grid ─────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Daily Reviews Bar Chart */}
-        <BlurFade delay={0 * 0.1}>
-          <ChartCard title="Daily Activity" subtitle="(Last 14 Days)">
+      {/* ── Charts Row 1 ─────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Daily Activity Bar Chart (2 cols) */}
+        <div className="md:col-span-2">
+          <ChartCard title="Daily Activity" subtitle="Last 14 Days">
             {reviewChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={reviewChartData}>
@@ -397,7 +332,7 @@ export default function AnalyticsDashboard() {
                     dataKey="reviews"
                     name="Reviews"
                     fill="#fb923c"
-                    radius={[3, 3, 0, 0]}
+                    radius={[0, 0, 0, 0]}
                     fillOpacity={0.85}
                     stackId="a"
                   />
@@ -412,7 +347,7 @@ export default function AnalyticsDashboard() {
                   <Bar
                     dataKey="essays"
                     name="Essays"
-                    fill="#c084fc"
+                    fill="#a78bfa"
                     radius={[3, 3, 0, 0]}
                     fillOpacity={0.85}
                     stackId="a"
@@ -420,106 +355,144 @@ export default function AnalyticsDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[220px] items-center justify-center">
+              <div className="flex h-[220px] flex-col items-center justify-center gap-2">
+                <BarChart3 className="h-7 w-7 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No activity yet. Start studying!</p>
               </div>
             )}
           </ChartCard>
-        </BlurFade>
+        </div>
 
-        {/* Quiz Score Trend */}
-        <BlurFade delay={1 * 0.1}>
-          <ChartCard title="Quiz Score Trend">
-            {quizData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={quizData}>
-                  <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    fontSize={10}
-                    tick={{ fill: tickFill }}
-                    axisLine={{ stroke: gridStroke }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    fontSize={10}
-                    tick={{ fill: tickFill }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#fb923c"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: "#fb923c", stroke: dotStroke, strokeWidth: 2 }}
-                    activeDot={{ r: 6, fill: "#fb923c", stroke: "#fff", strokeWidth: 2 }}
-                    name="Score %"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[220px] items-center justify-center">
-                <p className="text-sm text-muted-foreground">No quiz data yet. Take a quiz to see trends!</p>
+        {/* Flashcard Mastery Pie (1 col) */}
+        <ChartCard title="Flashcard Mastery">
+          {data.flashcardMastery.total > 0 ? (
+            <div className="flex h-[220px] flex-col items-center justify-center gap-4">
+              <div className="relative flex justify-center">
+                <PieChart width={130} height={130}>
+                  <Pie
+                    data={masteryData}
+                    cx={65}
+                    cy={65}
+                    innerRadius={42}
+                    outerRadius={60}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {masteryData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xl font-bold font-display text-foreground">
+                    {data.flashcardMastery.total}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">cards</span>
+                </div>
               </div>
-            )}
-          </ChartCard>
-        </BlurFade>
+              <div className="flex flex-col gap-1.5 w-full px-2">
+                {masteryData.map((d) => (
+                  <div key={d.name} className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                    <span className="text-muted-foreground">{d.name}</span>
+                    <span className="ml-auto font-medium text-foreground">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-[220px] flex-col items-center justify-center gap-2">
+              <BookOpen className="h-7 w-7 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No flashcard data yet.</p>
+            </div>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* ── Charts Row 2 ─────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Quiz Score Trend */}
+        <ChartCard title="Quiz Score Trend">
+          {quizData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={quizData}>
+                <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  fontSize={10}
+                  tick={{ fill: tickFill }}
+                  axisLine={{ stroke: gridStroke }}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  fontSize={10}
+                  tick={{ fill: tickFill }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#f59e0b", stroke: dotStroke, strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#f59e0b", stroke: "#fff", strokeWidth: 2 }}
+                  name="Score %"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[220px] flex-col items-center justify-center gap-2">
+              <BarChart3 className="h-7 w-7 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No quiz data yet. Take a quiz!</p>
+            </div>
+          )}
+        </ChartCard>
 
         {/* Essay Score Trend */}
-        <BlurFade delay={2 * 0.1}>
-          <ChartCard
-            title="Essay Score Trend"
-            subtitle={data.avgEssayScore > 0 ? `(Avg: ${data.avgEssayScore}/10)` : undefined}
-          >
-            {essayChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={essayChartData}>
-                  <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    fontSize={10}
-                    tick={{ fill: tickFill }}
-                    axisLine={{ stroke: gridStroke }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 10]}
-                    fontSize={10}
-                    tick={{ fill: tickFill }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#c084fc"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: "#c084fc", stroke: dotStroke, strokeWidth: 2 }}
-                    activeDot={{ r: 6, fill: "#c084fc", stroke: "#fff", strokeWidth: 2 }}
-                    name="Score /10"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[220px] items-center justify-center">
-                <p className="text-sm text-muted-foreground">No essay data yet. Write a practice essay!</p>
-              </div>
-            )}
-          </ChartCard>
-        </BlurFade>
-
-        {/* Flashcard Mastery Donut */}
-        <BlurFade delay={3 * 0.1}>
-          <ChartCard title="Flashcard Mastery">
-            <div className="flex h-[220px] items-center justify-center">
-              <DonutChart data={masteryData} />
+        <ChartCard
+          title="Essay Score Trend"
+          subtitle={data.avgEssayScore > 0 ? `Avg: ${data.avgEssayScore}/10` : undefined}
+        >
+          {essayChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={essayChartData}>
+                <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  fontSize={10}
+                  tick={{ fill: tickFill }}
+                  axisLine={{ stroke: gridStroke }}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 10]}
+                  fontSize={10}
+                  tick={{ fill: tickFill }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#a78bfa"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#a78bfa", stroke: dotStroke, strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#a78bfa", stroke: "#fff", strokeWidth: 2 }}
+                  name="Score /10"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[220px] flex-col items-center justify-center gap-2">
+              <PenLine className="h-7 w-7 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No essay data yet. Write a practice essay!</p>
             </div>
-          </ChartCard>
-        </BlurFade>
+          )}
+        </ChartCard>
       </div>
     </div>
   );

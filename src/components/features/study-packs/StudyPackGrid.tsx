@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ArrowUpRight } from "lucide-react";
+import { BookOpen, ArrowUpRight, FileText } from "lucide-react";
+
 interface StudyPackItem {
   id: string;
   title: string;
@@ -15,12 +16,15 @@ interface StudyPackItem {
 export default function StudyPackGrid({ packs }: { packs: StudyPackItem[] }) {
   if (packs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
-          <BookOpen className="h-8 w-8 text-orange-400/60" />
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="relative mb-5">
+          <div className="absolute inset-0 rounded-2xl bg-amber-500/10 blur-xl" />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-500/15 bg-amber-500/5">
+            <BookOpen className="h-7 w-7 text-amber-500/50" />
+          </div>
         </div>
-        <h3 className="mb-2 text-lg font-semibold text-foreground">No study packs yet</h3>
-        <p className="text-sm text-muted-foreground max-w-xs">Upload a document to generate your first AI-powered study pack.</p>
+        <h3 className="mb-1.5 font-display text-base font-semibold text-foreground">No study packs yet</h3>
+        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">Upload a document to generate your first AI-powered study pack.</p>
       </div>
     );
   }
@@ -30,48 +34,80 @@ export default function StudyPackGrid({ packs }: { packs: StudyPackItem[] }) {
       {packs.map((sp, index) => (
         <motion.div
           key={sp.id}
-          initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+          initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{
-            delay: index * 0.05,
-            duration: 0.4,
-            ease: [0.25, 0.4, 0.25, 1],
+            delay: index * 0.06,
+            duration: 0.45,
+            ease: [0.22, 1, 0.36, 1],
           }}
         >
-          <Link href={`/study-packs/${sp.id}`} className="block group">
-              <div className="h-full rounded-2xl border border-border/60 bg-card p-5 hover:border-orange-500/20 hover:shadow-xl hover:shadow-orange-500/5 transition-all duration-300 relative overflow-hidden">
-                {/* Hover glow */}
-                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/0 group-hover:bg-amber-500/[0.04] rounded-full blur-2xl transition-all duration-500 pointer-events-none" />
+          <Link href={`/study-packs/${sp.id}`} className="block group h-full">
+            <div className="tilt-card grain relative h-full rounded-2xl border border-border/50 bg-card overflow-hidden transition-all duration-300 hover:border-amber-500/25 hover:shadow-[0_8px_32px_oklch(0_0_0_/_20%),0_0_0_1px_oklch(0.76_0.17_62_/_8%)]">
 
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/8 border border-amber-500/12 flex items-center justify-center shrink-0 group-hover:bg-amber-500/12 group-hover:scale-105 transition-all duration-300">
-                    <BookOpen className="w-4 h-4 text-amber-500" />
+              {/* Sweep border on hover */}
+              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{
+                  padding: "1px",
+                  background: "conic-gradient(from 0deg, transparent 60%, rgba(251,191,36,0.5) 80%, rgba(251,191,36,0.3) 90%, transparent)",
+                  WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                  WebkitMaskComposite: "xor",
+                  maskComposite: "exclude",
+                }}
+              />
+
+              {/* Spotlight glow */}
+              <div className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-amber-500/0 blur-2xl transition-all duration-500 group-hover:bg-amber-500/8" />
+
+              {/* Header strip */}
+              <div className="relative px-5 pt-5 pb-4">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  {/* Icon with layered depth */}
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-xl bg-amber-500/20 blur-md group-hover:blur-lg transition-all duration-300" />
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 group-hover:border-amber-500/35 transition-all duration-300">
+                      <BookOpen className="w-4.5 h-4.5 text-amber-500 group-hover:scale-110 transition-transform duration-300" />
+                    </div>
                   </div>
-                  <Badge
-                    variant={
-                      sp.status === "ready"
-                        ? "default"
-                        : sp.status === "error"
-                          ? "destructive"
-                          : "secondary"
-                    }
-                    className="shrink-0 text-[10px] font-medium"
-                  >
-                    {sp.status}
-                  </Badge>
+
+                  <div className="flex items-center gap-2">
+                    {sp.status !== "ready" && (
+                      <Badge
+                        variant={sp.status === "error" ? "destructive" : "secondary"}
+                        className="text-[10px] font-medium"
+                      >
+                        {sp.status}
+                      </Badge>
+                    )}
+                    {/* Index */}
+                    <span className="index-num font-mono">{String(index + 1).padStart(2, "0")}</span>
+                  </div>
                 </div>
 
-                <h3 className="font-display font-semibold text-[15px] text-foreground line-clamp-2 mb-2 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                {/* Title */}
+                <h3 className="font-display font-semibold text-[15px] leading-snug text-foreground line-clamp-2 mb-1.5 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors duration-200">
                   {sp.title}
                 </h3>
 
-                <p className="text-xs text-muted-foreground line-clamp-1 mb-3">{sp.docTitle}</p>
-
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-muted-foreground/60">{sp.createdAt}</p>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/0 group-hover:text-amber-500 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                {/* Source doc */}
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+                  <FileText className="w-3 h-3 shrink-0" />
+                  <span className="line-clamp-1">{sp.docTitle}</span>
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="mx-5 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
+
+              {/* Footer */}
+              <div className="px-5 py-3.5 flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground/50 tabular-nums">{sp.createdAt}</span>
+                <div className="flex items-center gap-1 text-[11px] font-medium text-amber-500/0 group-hover:text-amber-500 transition-all duration-200 translate-x-1 group-hover:translate-x-0">
+                  <span>Open</span>
+                  <ArrowUpRight className="w-3 h-3 -translate-y-px group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" />
+                </div>
+              </div>
+            </div>
           </Link>
         </motion.div>
       ))}

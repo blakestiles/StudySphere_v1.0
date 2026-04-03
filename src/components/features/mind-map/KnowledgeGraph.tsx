@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import DisplayCards from "@/components/ui/display-cards";
-import { Brain, BookOpen, Network } from "lucide-react";
+import { Brain, BookOpen, Network, Link2, Download, Search, X, ZoomIn, ZoomOut, Maximize2, Loader2, GraduationCap, TrendingUp, Unlink, ArrowRight } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -102,6 +101,21 @@ export default function KnowledgeGraph() {
   const [hiddenPacks, setHiddenPacks] = useState<Set<string>>(new Set());
   const [focusHops, setFocusHops] = useState<number>(0); // 0 = off, 1 = 1-hop, 2 = 2-hop
 
+  // Mastery overlay
+  const [masteryMode, setMasteryMode] = useState(false);
+  const [masteryLoading, setMasteryLoading] = useState(false);
+  const [packMastery, setPackMastery] = useState<Record<string, { avg: number; attempted: boolean }>>({});
+  const masteryModeRef = useRef(false);
+  const packMasteryRef = useRef<Record<string, { avg: number; attempted: boolean }>>({});
+
+  // Graph insights (computed after load)
+  const [graphInsights, setGraphInsights] = useState<{
+    topNode: TopicNode | null;
+    topNodeDegree: number;
+    isolatedCount: number;
+    crossPackBridges: number;
+  } | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<TopicNode[]>([]);
@@ -132,6 +146,8 @@ export default function KnowledgeGraph() {
   // Sync state to refs
   useEffect(() => { hiddenPacksRef.current = hiddenPacks; }, [hiddenPacks]);
   useEffect(() => { searchQueryRef.current = searchQuery.toLowerCase(); }, [searchQuery]);
+  useEffect(() => { masteryModeRef.current = masteryMode; }, [masteryMode]);
+  useEffect(() => { packMasteryRef.current = packMastery; }, [packMastery]);
   useEffect(() => {
     focusHopsRef.current = focusHops;
     if (focusHops > 0 && selectedNodeRef.current) {
@@ -223,6 +239,29 @@ export default function KnowledgeGraph() {
         packNamesRef.current = nameMap;
         nodesRef.current = allTopics;
         edgesRef.current = allEdges;
+
+        // Compute graph insights
+        if (allTopics.length > 0) {
+          const degree: Record<string, number> = {};
+          for (const e of allEdges) {
+            degree[e.source] = (degree[e.source] || 0) + 1;
+            degree[e.target] = (degree[e.target] || 0) + 1;
+          }
+          let topNode = allTopics[0];
+          for (const n of allTopics) {
+            if ((degree[n.id] || 0) > (degree[topNode.id] || 0)) topNode = n;
+          }
+          const hasCross = new Set<string>();
+          for (const e of allEdges) {
+            if (e.type === "cross-pack") { hasCross.add(e.source); hasCross.add(e.target); }
+          }
+          setGraphInsights({
+            topNode,
+            topNodeDegree: degree[topNode.id] || 0,
+            isolatedCount: allTopics.filter(n => !hasCross.has(n.id)).length,
+            crossPackBridges: hasCross.size,
+          });
+        }
       } catch {
         // silent
       } finally {
@@ -361,6 +400,47 @@ export default function KnowledgeGraph() {
     const node = findNodeAt(w.x, w.y);
     if (node) router.push(`/study-packs/${node.packId}`);
   }, [screenToWorld, findNodeAt, router]);
+
+  // ── Mastery Overlay ───────────────────────────────────
+
+  const toggleMasteryMode = useCallback(async () => {
+    const turningOn = !masteryMode;
+    if (turningOn && Object.keys(packMastery).length === 0) {
+      setMasteryLoading(true);
+      try {
+        const res = await fetch("/api/history");
+        if (res.ok) {
+          const activities = await res.json();
+          const quizActivities = (activities as any[]).filter((a) => a.type === "quiz");
+          // Reverse map: title → packId
+          const titleToPackId: Record<string, string> = {};
+          for (const [packId, title] of Object.entries(packNamesRef.current)) {
+            titleToPackId[title] = packId;
+          }
+          const byPack: Record<string, number[]> = {};
+          for (const q of quizActivities) {
+            const packId = titleToPackId[q.title];
+            if (!packId) continue;
+            const pct = q.totalQuestions > 0 ? (q.score / q.totalQuestions) * 100 : 0;
+            if (!byPack[packId]) byPack[packId] = [];
+            byPack[packId].push(pct);
+          }
+          const mastery: Record<string, { avg: number; attempted: boolean }> = {};
+          for (const packId of Object.keys(packNamesRef.current)) {
+            if (byPack[packId]?.length > 0) {
+              const avg = byPack[packId].reduce((a, b) => a + b, 0) / byPack[packId].length;
+              mastery[packId] = { avg, attempted: true };
+            } else {
+              mastery[packId] = { avg: 0, attempted: false };
+            }
+          }
+          setPackMastery(mastery);
+        }
+      } catch { /* silent */ }
+      setMasteryLoading(false);
+    }
+    setMasteryMode((prev) => !prev);
+  }, [masteryMode, packMastery]);
 
   // ── Export as PNG ──────────────────────────────────────
 
@@ -607,7 +687,12 @@ export default function KnowledgeGraph() {
         if (hidden.has(n.packId)) continue;
         if (focus && !focus.has(n.id)) continue;
 
-        const color = colors[n.packId] || "#60a5fa";
+        const masteryData = masteryModeRef.current ? packMasteryRef.current[n.packId] : null;
+        const color = masteryData
+          ? masteryData.attempted
+            ? masteryData.avg >= 80 ? "#4ade80" : masteryData.avg >= 60 ? "#fbbf24" : "#f87171"
+            : "#64748b"
+          : colors[n.packId] || "#60a5fa";
         const rgb = hexToRgb(color);
         const isSelected = sel?.id === n.id;
         const isConnected = connectedIds.has(n.id);
@@ -801,84 +886,67 @@ export default function KnowledgeGraph() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-border bg-background p-12">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading knowledge graph...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        <p className="text-sm text-muted-foreground">Building knowledge graph…</p>
       </div>
     );
   }
 
   if (!loading && nodesRef.current.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-background p-12 text-center flex flex-col items-center gap-8">
-        <div>
-          <p className="text-lg font-semibold text-foreground">No Knowledge Graph Yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Generate some study packs to see your topics visualized as a connected knowledge graph.
-          </p>
+      <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-card">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.04] via-transparent to-transparent pointer-events-none" />
+        <div className="relative flex flex-col items-center justify-center gap-4 py-16 text-center px-6">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-amber-500/20 blur-xl" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20">
+              <Network className="h-8 w-8 text-amber-500/80" />
+            </div>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">No Knowledge Graph Yet</p>
+            <p className="mt-1.5 text-sm text-muted-foreground max-w-sm">
+              Generate study packs to see your topics visualized as a connected knowledge graph with cross-topic relationships.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 mt-1">
+            {[
+              { icon: Brain, label: "AI-extracted topics", color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/20" },
+              { icon: Link2, label: "Cross-pack links", color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20" },
+              { icon: BookOpen, label: "From your packs", color: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" },
+            ].map(({ icon: Icon, label, color, bg }) => (
+              <span key={label} className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[12px] font-medium ${bg} ${color}`}>
+                <Icon className="h-3.5 w-3.5" />{label}
+              </span>
+            ))}
+          </div>
         </div>
-        <DisplayCards
-          cards={[
-            {
-              icon: <Brain className="h-4 w-4" />,
-              title: "Topics",
-              description: "AI-extracted key concepts",
-              date: "From your documents",
-              iconClassName: "text-blue-400",
-              titleClassName: "text-blue-400",
-              className: "[grid-area:stack] hover:-translate-y-10 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-border before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-background/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
-            },
-            {
-              icon: <BookOpen className="h-4 w-4" />,
-              title: "Study Packs",
-              description: "Organized study materials",
-              date: "Upload &amp; generate",
-              iconClassName: "text-purple-400",
-              titleClassName: "text-purple-400",
-              className: "[grid-area:stack] translate-x-16 translate-y-10 hover:-translate-y-1 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-border before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-background/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
-            },
-            {
-              icon: <Network className="h-4 w-4" />,
-              title: "Connections",
-              description: "Cross-topic relationships",
-              date: "Auto-discovered",
-              iconClassName: "text-amber-400",
-              titleClassName: "text-amber-400",
-              className: "[grid-area:stack] translate-x-32 translate-y-20 hover:translate-y-10",
-            },
-          ]}
-        />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-0 overflow-hidden rounded-xl border border-border bg-background">
+    <div className="flex flex-col gap-0 overflow-hidden rounded-2xl border border-border/60 bg-card">
       {/* Toolbar: Stats + Search + Export */}
       <div className="flex flex-wrap items-center gap-4 border-b border-border bg-card px-4 py-2.5">
         {/* Stats */}
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.6)]" />
-            <span className="text-sm font-medium text-foreground">{nodesRef.current.filter(n => !hiddenPacks.has(n.packId)).length}</span>
-            <span className="text-sm text-muted-foreground">Topics</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+            <div className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.5)]" />
+            <span className="font-semibold text-foreground">{nodesRef.current.filter(n => !hiddenPacks.has(n.packId)).length}</span>
+            <span>Topics</span>
           </div>
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-              <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
-            </svg>
-            <span className="text-sm font-medium text-foreground">{crossPackCount}</span>
-            <span className="text-sm text-muted-foreground">Cross-links</span>
+          <div className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+            <Link2 className="h-3.5 w-3.5" />
+            <span className="font-semibold text-foreground">{crossPackCount}</span>
+            <span>Cross-links</span>
           </div>
-          <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <span className="text-sm font-medium text-foreground">{packCount}</span>
-            <span className="text-sm text-muted-foreground">Packs</span>
+          <div className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+            <BookOpen className="h-3.5 w-3.5" />
+            <span className="font-semibold text-foreground">{packCount}</span>
+            <span>Packs</span>
           </div>
         </div>
 
@@ -886,39 +954,43 @@ export default function KnowledgeGraph() {
 
         {/* Search */}
         <div className="relative">
-          <svg className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
           <input
             type="text"
-            placeholder="Search topics..."
+            placeholder="Search topics…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-48 rounded-lg border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:outline-none"
+            className="h-8 w-44 rounded-lg border border-border/60 bg-muted/30 pl-8 pr-7 text-xs text-foreground placeholder:text-muted-foreground/40 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 transition-all"
           />
           {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+            <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground">
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
+
+        {/* Mastery Overlay */}
+        <button
+          onClick={toggleMasteryMode}
+          disabled={masteryLoading}
+          title="Color nodes by quiz performance"
+          className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors ${
+            masteryMode
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          {masteryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GraduationCap className="h-3.5 w-3.5" />}
+          Mastery
+        </button>
 
         {/* Export PNG */}
         <button
           onClick={exportPNG}
           title="Export as PNG"
-          className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-border/60 px-3 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-          </svg>
+          <Download className="h-3.5 w-3.5" />
           Export
         </button>
       </div>
@@ -940,7 +1012,7 @@ export default function KnowledgeGraph() {
                   transformRef.current.x = w / 2 - n.x * transformRef.current.scale;
                   transformRef.current.y = h / 2 - n.y * transformRef.current.scale;
                 }}
-                className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs transition-colors hover:bg-muted"
+                className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2 py-1 text-xs transition-colors hover:bg-muted"
               >
                 <div
                   className="h-2 w-2 rounded-full"
@@ -974,7 +1046,7 @@ export default function KnowledgeGraph() {
         {/* Right Panel */}
         <div className="absolute right-3 top-3 z-10 flex w-56 flex-col gap-3" style={{ maxHeight: "calc(100% - 60px)", overflowY: "auto" }}>
           {/* Study Packs Legend with Filters */}
-          <div className="rounded-lg border border-border bg-card/95 p-3 backdrop-blur-sm">
+          <div className="rounded-xl border border-border/60 bg-card/95 p-3 backdrop-blur-sm">
             <p className="mb-2 text-xs font-semibold text-foreground">Study Packs</p>
             <div className="flex flex-col gap-1.5">
               {Object.entries(packNamesRef.current).map(([packId, title]) => (
@@ -1022,50 +1094,118 @@ export default function KnowledgeGraph() {
             </div>
           </div>
 
-          {/* Tips (collapsed when node selected to save space) */}
+          {/* Insights / Mastery Legend */}
           {!selectedNode && (
-            <div className="rounded-lg border border-border bg-card/95 p-3 backdrop-blur-sm">
-              <p className="mb-2 text-xs font-semibold text-amber-400">Tips</p>
-              <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <li>&#8226; Click a node to inspect it</li>
-                <li>&#8226; Double-click to open study pack</li>
-                <li>&#8226; Drag nodes to rearrange</li>
-                <li>&#8226; Scroll to zoom in/out</li>
-                <li>&#8226; Click pack names to filter</li>
-                <li>&#8226; Thicker dashed = stronger link</li>
-              </ul>
-            </div>
+            <>
+              {/* Graph Insights */}
+              {graphInsights && (
+                <div className="rounded-xl border border-border/60 bg-card/95 p-3 backdrop-blur-sm">
+                  <p className="mb-2 text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
+                    Insights
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {graphInsights.topNode && (
+                      <div
+                        className="rounded-lg bg-muted/40 px-2.5 py-2 cursor-pointer hover:bg-muted/70 transition-colors"
+                        title="Click to inspect most connected topic"
+                        onClick={() => {
+                          const n = graphInsights.topNode!;
+                          selectedNodeRef.current = n;
+                          setSelectedNode(n);
+                          setConnectedCount(edgesRef.current.filter(e => e.source === n.id || e.target === n.id).length);
+                          const { w, h } = sizeRef.current;
+                          transformRef.current.x = w / 2 - n.x * transformRef.current.scale;
+                          transformRef.current.y = h / 2 - n.y * transformRef.current.scale;
+                        }}
+                      >
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Most Connected</p>
+                        <p className="text-xs font-semibold text-foreground truncate">{graphInsights.topNode.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{graphInsights.topNodeDegree} connections · {graphInsights.topNode.packTitle}</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="rounded-lg bg-muted/40 px-2.5 py-2">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Bridges</p>
+                        <p className="text-sm font-bold text-foreground">{graphInsights.crossPackBridges}</p>
+                        <p className="text-[10px] text-muted-foreground">cross-pack</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-2.5 py-2">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Isolated</p>
+                        <p className="text-sm font-bold text-foreground">{graphInsights.isolatedCount}</p>
+                        <p className="text-[10px] text-muted-foreground">topics</p>
+                      </div>
+                    </div>
+                    {graphInsights.isolatedCount > 0 && (
+                      <p className="text-[10.5px] text-amber-600 dark:text-amber-400 flex items-start gap-1">
+                        <Unlink className="h-3 w-3 mt-0.5 shrink-0" />
+                        {graphInsights.isolatedCount} topic{graphInsights.isolatedCount !== 1 ? "s" : ""} have no cross-pack links
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Mastery Legend (only when mastery mode is on) */}
+              {masteryMode && (
+                <div className="rounded-xl border border-amber-500/20 bg-card/95 p-3 backdrop-blur-sm">
+                  <p className="mb-2 text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <GraduationCap className="h-3.5 w-3.5" />
+                    Mastery Legend
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { color: "#4ade80", label: "Mastered", desc: "≥ 80% avg score" },
+                      { color: "#fbbf24", label: "Learning", desc: "60–79%" },
+                      { color: "#f87171", label: "Needs Work", desc: "< 60%" },
+                      { color: "#64748b", label: "Not Studied", desc: "No quiz attempts" },
+                    ].map(({ color, label, desc }) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}88` }} />
+                        <div>
+                          <span className="text-xs font-medium text-foreground">{label}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1">{desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tips */}
+              {!masteryMode && !graphInsights && (
+                <div className="rounded-xl border border-amber-500/20 bg-card/95 p-3 backdrop-blur-sm">
+                  <p className="mb-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Tips</p>
+                  <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    <li>&#8226; Click a node to inspect it</li>
+                    <li>&#8226; Double-click to open study pack</li>
+                    <li>&#8226; Drag nodes to rearrange</li>
+                    <li>&#8226; Scroll to zoom in/out</li>
+                    <li>&#8226; Click pack names to filter</li>
+                  </ul>
+                </div>
+              )}
+            </>
           )}
 
           {/* Selected Node Detail Panel */}
           {selectedNode && (
-            <div className="rounded-lg border border-blue-500/30 bg-card/95 p-3 backdrop-blur-sm">
+            <div className="rounded-xl border border-amber-500/25 bg-card/95 p-3 backdrop-blur-sm">
               <p className="text-sm font-semibold text-foreground">{selectedNode.name}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{selectedNode.packTitle}</p>
 
               {/* Stats row */}
               <div className="mt-2 flex gap-3">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                    <path d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
-                  </svg>
+                  <Link2 className="h-3 w-3" />
                   {connectedCount}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Flashcards">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <rect x="2" y="3" width="20" height="14" rx="2" />
-                    <line x1="8" y1="21" x2="16" y2="21" />
-                    <line x1="12" y1="17" x2="12" y2="21" />
-                  </svg>
+                  <BookOpen className="h-3 w-3" />
                   {selectedNode.flashcardCount}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Quiz questions">
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
+                  <Brain className="h-3 w-3" />
                   {selectedNode.quizCount}
                 </div>
               </div>
@@ -1091,7 +1231,7 @@ export default function KnowledgeGraph() {
                       onClick={() => setFocusHops(opt.value)}
                       className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
                         focusHops === opt.value
-                          ? "bg-blue-600/30 text-blue-400"
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                           : "bg-muted/50 text-muted-foreground hover:bg-muted"
                       }`}
                     >
@@ -1125,7 +1265,7 @@ export default function KnowledgeGraph() {
                         />
                         <span className="flex-1 truncate text-muted-foreground">{cn.name}</span>
                         {type === "cross-pack" && (
-                          <span className="flex-shrink-0 rounded bg-orange-500/20 px-1 py-0.5 text-[9px] text-orange-400">
+                          <span className="flex-shrink-0 rounded-md bg-amber-500/15 border border-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
                             {Math.round(strength * 100)}%
                           </span>
                         )}
@@ -1135,21 +1275,78 @@ export default function KnowledgeGraph() {
                 </div>
               )}
 
+              {/* Mastery score for this pack */}
+              {masteryMode && packMastery[selectedNode.packId] && (
+                <div className="mt-3 border-t border-border pt-2">
+                  <p className="mb-1.5 text-xs font-medium text-foreground flex items-center gap-1.5">
+                    <GraduationCap className="h-3.5 w-3.5 text-amber-500" />
+                    Pack Mastery
+                  </p>
+                  {packMastery[selectedNode.packId].attempted ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${packMastery[selectedNode.packId].avg}%`,
+                            backgroundColor: packMastery[selectedNode.packId].avg >= 80 ? "#4ade80"
+                              : packMastery[selectedNode.packId].avg >= 60 ? "#fbbf24" : "#f87171",
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-foreground">
+                        {Math.round(packMastery[selectedNode.packId].avg)}%
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No quiz attempts yet</p>
+                  )}
+                </div>
+              )}
+
+              {/* Quick study actions */}
+              <div className="mt-3 border-t border-border pt-2">
+                <p className="mb-1.5 text-xs font-medium text-foreground">Quick Study</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => router.push(`/study-packs/${selectedNode.packId}`)}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-border/60 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <BookOpen className="h-3 w-3" />
+                    Flashcards
+                  </button>
+                  <button
+                    onClick={() => router.push(`/study-packs/${selectedNode.packId}`)}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-border/60 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <Brain className="h-3 w-3" />
+                    Take Quiz
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={() => router.push(`/study-packs/${selectedNode.packId}`)}
-                className="mt-3 w-full rounded-md bg-blue-600/20 px-2 py-1.5 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-600/30"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 px-2 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-all"
               >
                 Open Study Pack
+                <ArrowRight className="h-3 w-3" />
               </button>
             </div>
           )}
         </div>
 
         {/* Zoom Controls */}
-        <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border bg-card/95 p-1 backdrop-blur-sm">
-          <button onClick={zoomIn} className="rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground" title="Zoom in">+</button>
-          <button onClick={resetView} className="rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground" title="Reset view">Reset</button>
-          <button onClick={zoomOut} className="rounded px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground" title="Zoom out">&minus;</button>
+        <div className="absolute bottom-3 right-3 z-10 flex items-center gap-0.5 rounded-xl border border-border/60 bg-card/95 p-1 backdrop-blur-sm">
+          <button onClick={zoomIn} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Zoom in">
+            <ZoomIn className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={resetView} className="flex h-7 items-center rounded-lg px-2 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Reset view">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={zoomOut} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Zoom out">
+            <ZoomOut className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>

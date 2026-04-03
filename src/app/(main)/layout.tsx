@@ -20,12 +20,10 @@ export default async function MainLayout({
 
   return (
     <StudyDataProvider readyPacks={readyPacks}>
-      <div className="min-h-screen bg-background bg-grid-pattern relative">
-        {/* Ambient background glows */}
+      <div className="min-h-screen bg-background relative">
+        {/* Subtle grid pattern only */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-[200px] -right-[200px] w-[600px] h-[600px] bg-amber-500/[0.02] rounded-full blur-[150px]" />
-          <div className="absolute -bottom-[200px] -left-[200px] w-[500px] h-[500px] bg-amber-500/[0.015] rounded-full blur-[120px]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-500/[0.01] rounded-full blur-[100px]" />
+          <div className="absolute inset-0 bg-grid-pattern opacity-[0.4] dark:opacity-[0.15]" />
         </div>
 
         <NavigationProgress />
@@ -33,7 +31,9 @@ export default async function MainLayout({
         <div className="flex relative">
           <Sidebar />
           <main className="flex-1 p-4 sm:p-6 md:ml-60 min-h-[calc(100vh-3.5rem)]">
-            {children}
+            <div className="section-page">
+              {children}
+            </div>
           </main>
         </div>
         <CommandPalette />

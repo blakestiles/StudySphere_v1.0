@@ -7,8 +7,8 @@ export default function AudioStudyPage() {
     <BlurFade delay={0.1} duration={0.4}>
       <div className="space-y-4">
         <div>
-          <TextShimmer className="text-2xl font-bold">Audio Study Mode</TextShimmer>
-          <p className="text-sm text-muted-foreground">
+          <TextShimmer className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Audio Study Mode</TextShimmer>
+          <p className="text-sm text-muted-foreground mt-1">
             Listen to your study materials with text-to-speech
           </p>
         </div>

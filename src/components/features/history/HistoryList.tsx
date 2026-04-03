@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  ClipboardList, PenLine, Timer, ChevronDown,
+  CheckCircle2, XCircle, Loader2, Clock, Target,
+  AlignLeft, Brain, Crosshair, Check, History,
+} from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -61,70 +67,14 @@ interface FocusActivity {
 }
 
 type Activity = QuizActivity | EssayActivity | FocusActivity;
-
 type TabType = "quizzes" | "essays" | "focus";
-
-// ── Icons ──────────────────────────────────────────────
-
-function QuizIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      <path d="M9 14l2 2 4-4" />
-    </svg>
-  );
-}
-
-function EssayIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  );
-}
-
-function FocusIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function ChevronDown({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M19 9l-7 7-7-7" />
-    </svg>
-  );
-}
-
-function CheckCircle({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
-
-function XCircle({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
 
 // ── Helpers ────────────────────────────────────────────
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit",
   });
 }
 
@@ -135,28 +85,336 @@ function formatDuration(mins: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-// ── Score Badge ────────────────────────────────────────
+// ── Type config ────────────────────────────────────────
 
-function ScoreBadge({ score, total, label }: { score: number; total: number; label?: string }) {
+const TYPE_CONFIG = {
+  quiz: {
+    icon: ClipboardList,
+    iconBg: "bg-amber-500/10 border-amber-500/20",
+    iconColor: "text-amber-500",
+    accentBorder: "border-l-amber-500/50",
+  },
+  essay: {
+    icon: PenLine,
+    iconBg: "bg-violet-500/10 border-violet-500/20",
+    iconColor: "text-violet-500",
+    accentBorder: "border-l-violet-500/50",
+  },
+  focus: {
+    icon: Timer,
+    iconBg: "bg-blue-500/10 border-blue-500/20",
+    iconColor: "text-blue-500",
+    accentBorder: "border-l-blue-500/50",
+  },
+} as const;
+
+// ── Score pill ─────────────────────────────────────────
+
+function ScorePill({ score, total }: { score: number; total: number }) {
   const pct = total > 0 ? score / total : 0;
-  const color =
+  const label = total <= 10 ? `${score}/${total}` : `${Math.round(pct * 100)}%`;
+  const cls =
     pct >= 0.8
-      ? "text-emerald-400"
+      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
       : pct >= 0.5
-      ? "text-orange-400"
-      : "text-red-400";
+      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+      : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+  return (
+    <span className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+// ── Quiz Details ───────────────────────────────────────
+
+function QuizDetails({ activity }: { activity: QuizActivity }) {
+  const pct = activity.totalQuestions > 0
+    ? Math.round((activity.score / activity.totalQuestions) * 100) : 0;
 
   return (
-    <div className="text-right">
-      <p className={`text-lg font-bold ${color}`}>
-        {score}/{total}
+    <div className="space-y-3">
+      <p className="text-[12.5px] text-muted-foreground/80">
+        You scored <span className="font-semibold text-foreground">{activity.score}/{activity.totalQuestions}</span> ({pct}%).{" "}
+        {pct === 100
+          ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">Perfect score!</span>
+          : pct >= 70
+          ? <span className="text-amber-600 dark:text-amber-400 font-medium">Good job!</span>
+          : <span className="text-red-600 dark:text-red-400 font-medium">Keep practicing!</span>}
       </p>
-      {label && <p className="text-[10px] text-muted-foreground">{label}</p>}
+
+      {activity.responses?.length > 0 && (
+        <div className="space-y-2">
+          {activity.responses.map((r, i) => (
+            <div
+              key={r.questionId || i}
+              className={`rounded-xl border p-3 ${
+                r.isCorrect
+                  ? "border-emerald-500/15 bg-emerald-500/[0.04]"
+                  : "border-red-500/15 bg-red-500/[0.04]"
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                {r.isCorrect
+                  ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                }
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-medium text-foreground">
+                    {r.questionText || `Question ${i + 1}`}
+                  </p>
+                  {r.options.length > 0 && r.selectedAnswer != null && (
+                    <p className="mt-1 text-[11.5px]">
+                      <span className="text-muted-foreground/70">Your answer: </span>
+                      <span className={r.isCorrect ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-red-600 dark:text-red-400 font-medium"}>
+                        {r.options[r.selectedAnswer] || "N/A"}
+                      </span>
+                    </p>
+                  )}
+                  {!r.isCorrect && r.correctAnswer != null && r.options.length > 0 && (
+                    <p className="mt-0.5 text-[11.5px]">
+                      <span className="text-muted-foreground/70">Correct: </span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">{r.options[r.correctAnswer]}</span>
+                    </p>
+                  )}
+                  {r.explanation && (
+                    <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground/70">{r.explanation}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Component ──────────────────────────────────────────
+// ── Essay Details ──────────────────────────────────────
+
+const ESSAY_CRITERIA = [
+  { key: "accuracy", label: "Accuracy", icon: Crosshair, color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/20" },
+  { key: "depth", label: "Depth", icon: Target, color: "text-violet-500", bg: "bg-violet-500/10 border-violet-500/20" },
+  { key: "clarity", label: "Clarity", icon: AlignLeft, color: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" },
+  { key: "criticalThinking", label: "Critical Thinking", icon: Brain, color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20" },
+] as const;
+
+function EssayDetails({ activity }: { activity: EssayActivity }) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border/50 bg-muted/20 px-3.5 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 mb-1">Prompt</p>
+        <p className="text-[12.5px] italic text-foreground/80 leading-relaxed">{activity.question}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {ESSAY_CRITERIA.map(({ key, label, icon: Icon, color, bg }) => (
+          <div key={key} className={`rounded-xl border px-3 py-2 text-center ${bg}`}>
+            <Icon className={`h-3.5 w-3.5 mx-auto mb-1 ${color}`} />
+            <p className="text-[14px] font-bold font-display text-foreground leading-none">
+              {activity.scores[key]}<span className="text-[9px] text-muted-foreground/60">/10</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {activity.feedback?.perCriteria && (
+        <div className="space-y-2">
+          {ESSAY_CRITERIA.map(({ key, label }) => {
+            const fb = activity.feedback.perCriteria[key];
+            if (!fb) return null;
+            return (
+              <div key={key} className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold text-foreground/80 mb-0.5">{label}</p>
+                <p className="text-[11.5px] leading-relaxed text-muted-foreground/70">{fb}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {activity.feedback?.summary && (
+        <div className="rounded-xl border border-blue-500/15 bg-blue-500/[0.04] p-3">
+          <p className="text-[11px] font-semibold text-foreground/80 mb-0.5">Summary</p>
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground/70">{activity.feedback.summary}</p>
+        </div>
+      )}
+
+      {activity.feedback?.improvements?.length > 0 && (
+        <div>
+          <p className="mb-2 text-[11px] font-semibold text-foreground/80">Areas to Improve</p>
+          <ul className="space-y-1.5">
+            {activity.feedback.improvements.map((imp, i) => (
+              <li key={i} className="flex items-start gap-2 text-[11.5px] text-muted-foreground/70">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/70" />
+                {imp}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-[10.5px] text-muted-foreground/50">{activity.wordCount} words written</p>
+    </div>
+  );
+}
+
+// ── Focus Details ──────────────────────────────────────
+
+function FocusDetails({ activity }: { activity: FocusActivity }) {
+  const totalGoals = activity.goals?.length || 0;
+  const completed = activity.completedGoals?.length || 0;
+  const goalPct = totalGoals > 0 ? Math.round((completed / totalGoals) * 100) : 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <span className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-[12px] text-foreground">
+          <Clock className="h-3.5 w-3.5 text-blue-500" />
+          <span className="font-medium">{formatDuration(activity.duration)}</span>
+          <span className="text-muted-foreground/60">duration</span>
+        </span>
+        {activity.sessionsCompleted != null && activity.sessionsCompleted > 0 && (
+          <span className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-[12px] text-foreground">
+            <Timer className="h-3.5 w-3.5 text-amber-500" />
+            <span className="font-medium">{activity.sessionsCompleted}</span>
+            <span className="text-muted-foreground/60">pomodoros</span>
+          </span>
+        )}
+        {totalGoals > 0 && (
+          <span className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-1.5 text-[12px] text-foreground">
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="font-medium">{completed}/{totalGoals}</span>
+            <span className="text-muted-foreground/60">goals</span>
+          </span>
+        )}
+      </div>
+
+      {totalGoals > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-1.5 text-[11px]">
+            <span className="font-semibold text-foreground/80">Goals</span>
+            <span className="text-muted-foreground/60">{goalPct}% complete</span>
+          </div>
+          <div className="space-y-1.5">
+            {activity.goals.map((goal, i) => {
+              const isDone = activity.completedGoals?.includes(i);
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 ${
+                    isDone ? "border-emerald-500/20 bg-emerald-500/[0.04]" : "border-border/50 bg-muted/20"
+                  }`}
+                >
+                  <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
+                    isDone ? "border-emerald-500/40 bg-emerald-500/20" : "border-border/60"
+                  }`}>
+                    {isDone && <Check className="h-2.5 w-2.5 text-emerald-500" strokeWidth={3} />}
+                  </div>
+                  <span className={`text-[12px] ${isDone ? "text-muted-foreground/60 line-through" : "text-foreground/80"}`}>
+                    {goal}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activity.recap && (
+        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+          <p className="text-[11px] font-semibold text-foreground/80 mb-1">Session Recap</p>
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground/70">{activity.recap}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── History Entry ──────────────────────────────────────
+
+function HistoryEntry({
+  activity,
+  isExpanded,
+  onToggle,
+  index,
+}: {
+  activity: Activity;
+  isExpanded: boolean;
+  onToggle: () => void;
+  index: number;
+}) {
+  const cfg = TYPE_CONFIG[activity.type];
+  const Icon = cfg.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className={`overflow-hidden rounded-2xl border border-border/60 border-l-2 bg-card ${cfg.accentBorder}`}
+    >
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors"
+      >
+        {/* Type icon */}
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${cfg.iconBg}`}>
+          <Icon className={`h-4 w-4 ${cfg.iconColor}`} />
+        </div>
+
+        {/* Title + date */}
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-foreground truncate">{activity.title}</p>
+          <p className="text-[11px] text-muted-foreground/60">{formatDate(activity.date)}</p>
+        </div>
+
+        {/* Metric */}
+        <div className="shrink-0">
+          {activity.type === "quiz" && (
+            <ScorePill score={activity.score} total={activity.totalQuestions} />
+          )}
+          {activity.type === "essay" && (
+            <ScorePill score={activity.scores.overall} total={10} />
+          )}
+          {activity.type === "focus" && (
+            <span className="flex items-center gap-1 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+              <Clock className="h-3 w-3" />{formatDuration(activity.duration)}
+            </span>
+          )}
+        </div>
+
+        <motion.div
+          animate={{ rotate: isExpanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/40 px-4 py-4">
+              {activity.type === "quiz" && <QuizDetails activity={activity} />}
+              {activity.type === "essay" && <EssayDetails activity={activity} />}
+              {activity.type === "focus" && <FocusDetails activity={activity} />}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────
 
 export default function HistoryList() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -167,9 +425,7 @@ export default function HistoryList() {
   useEffect(() => {
     fetch("/api/history")
       .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setActivities(data);
-      })
+      .then((data) => { if (Array.isArray(data)) setActivities(data); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -183,25 +439,23 @@ export default function HistoryList() {
     });
   };
 
+  const tabs: { key: TabType; label: string; icon: React.ElementType; type: Activity["type"] }[] = [
+    { key: "quizzes", label: "Quizzes", icon: ClipboardList, type: "quiz" },
+    { key: "essays", label: "Essays", icon: PenLine, type: "essay" },
+    { key: "focus", label: "Focus", icon: Timer, type: "focus" },
+  ];
+
   const filtered = activities.filter((a) => {
     if (tab === "quizzes") return a.type === "quiz";
     if (tab === "essays") return a.type === "essay";
     return a.type === "focus";
   });
 
-  const tabs: { key: TabType; label: string; icon: React.ReactNode }[] = [
-    { key: "quizzes", label: "Quizzes", icon: <QuizIcon className="h-3.5 w-3.5" /> },
-    { key: "essays", label: "Essays", icon: <EssayIcon className="h-3.5 w-3.5" /> },
-    { key: "focus", label: "Focus Sessions", icon: <FocusIcon className="h-3.5 w-3.5" /> },
-  ];
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center rounded-xl border border-border bg-background py-20">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading history...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        <p className="text-sm text-muted-foreground">Loading history…</p>
       </div>
     );
   }
@@ -209,26 +463,26 @@ export default function HistoryList() {
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+      <div className="flex items-center gap-1 rounded-2xl border border-border/60 bg-card p-1">
         {tabs.map((t) => {
-          const count = activities.filter((a) =>
-            t.key === "quizzes" ? a.type === "quiz" : t.key === "essays" ? a.type === "essay" : a.type === "focus"
-          ).length;
+          const count = activities.filter((a) => a.type === t.type).length;
+          const Icon = t.icon;
+          const isActive = tab === t.key;
           return (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-all ${
+                isActive ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.icon}
+              <Icon className="h-3.5 w-3.5" />
               {t.label}
               {count > 0 && (
-                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  tab === t.key ? "bg-orange-500/20 text-orange-400" : "bg-muted/50 text-muted-foreground"
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                  isActive
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    : "bg-muted/60 text-muted-foreground/60"
                 }`}>
                   {count}
                 </span>
@@ -239,300 +493,46 @@ export default function HistoryList() {
       </div>
 
       {/* Content */}
-      {filtered.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            No {tab === "quizzes" ? "quiz" : tab === "essays" ? "essay" : "focus session"} history yet.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((activity) => (
-            <HistoryEntry
-              key={activity._id}
-              activity={activity}
-              isExpanded={expanded.has(activity._id)}
-              onToggle={() => toggleExpand(activity._id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── History Entry ──────────────────────────────────────
-
-function HistoryEntry({
-  activity,
-  isExpanded,
-  onToggle,
-}: {
-  activity: Activity;
-  isExpanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      {/* Header */}
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">{activity.title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(activity.date)}</p>
-        </div>
-
-        {/* Metric */}
-        <div className="shrink-0">
-          {activity.type === "quiz" && (
-            <ScoreBadge score={activity.score} total={activity.totalQuestions} label="Score" />
-          )}
-          {activity.type === "essay" && (
-            <ScoreBadge score={activity.scores.overall} total={10} label="Score" />
-          )}
-          {activity.type === "focus" && (
-            <div className="text-right">
-              <p className="text-lg font-bold text-blue-400">{formatDuration(activity.duration)}</p>
-              <p className="text-[10px] text-muted-foreground">Duration</p>
+      <AnimatePresence mode="wait">
+        {filtered.length === 0 ? (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card py-14 text-center"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/40 border border-border/40">
+              <History className="h-6 w-6 text-muted-foreground/40" />
             </div>
-          )}
-        </div>
-
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
-            isExpanded ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {/* Expanded Details */}
-      {isExpanded && (
-        <div className="border-t border-border px-5 py-4">
-          {activity.type === "quiz" && <QuizDetails activity={activity} />}
-          {activity.type === "essay" && <EssayDetails activity={activity} />}
-          {activity.type === "focus" && <FocusDetails activity={activity} />}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Quiz Details ───────────────────────────────────────
-
-function QuizDetails({ activity }: { activity: QuizActivity }) {
-  const pct = activity.totalQuestions > 0
-    ? Math.round((activity.score / activity.totalQuestions) * 100)
-    : 0;
-  const isPerfect = activity.score === activity.totalQuestions;
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-foreground">
-        You scored {activity.score}/{activity.totalQuestions}.{" "}
-        {isPerfect ? (
-          <span className="text-emerald-400">Perfect!</span>
-        ) : pct >= 70 ? (
-          <span className="text-orange-400">Good job!</span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">No history yet</p>
+              <p className="mt-1 text-xs text-muted-foreground/60">
+                Complete a {tab === "quizzes" ? "quiz" : tab === "essays" ? "practice essay" : "focus session"} to see it here.
+              </p>
+            </div>
+          </motion.div>
         ) : (
-          <span className="text-red-400">Keep practicing!</span>
-        )}
-      </p>
-
-      {activity.responses?.length > 0 && (
-        <div className="space-y-3">
-          {activity.responses.map((r, i) => (
-            <div
-              key={r.questionId || i}
-              className="rounded-lg border border-border bg-muted/50 p-4"
-            >
-              <div className="flex items-start gap-3">
-                {r.isCorrect ? (
-                  <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                ) : (
-                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {r.questionText || `Question ${i + 1}`}
-                  </p>
-                  {r.options.length > 0 && r.selectedAnswer != null && (
-                    <p className="mt-1.5 text-xs">
-                      <span className="text-muted-foreground">Your answer: </span>
-                      <span className={r.isCorrect ? "text-emerald-400" : "text-orange-400"}>
-                        {r.options[r.selectedAnswer] || "N/A"}
-                      </span>
-                    </p>
-                  )}
-                  {!r.isCorrect && r.correctAnswer != null && r.options.length > 0 && (
-                    <p className="mt-0.5 text-xs">
-                      <span className="text-muted-foreground">Correct answer: </span>
-                      <span className="text-emerald-400">{r.options[r.correctAnswer]}</span>
-                    </p>
-                  )}
-                  {r.explanation && (
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                      {r.explanation}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${
-                    r.isCorrect
-                      ? "bg-emerald-500/10 text-emerald-400"
-                      : "bg-red-500/10 text-red-400"
-                  }`}
-                >
-                  {r.isCorrect ? "1/1" : "0/1"}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Essay Details ──────────────────────────────────────
-
-function EssayDetails({ activity }: { activity: EssayActivity }) {
-  const criteria = [
-    { key: "accuracy", label: "Accuracy" },
-    { key: "depth", label: "Depth" },
-    { key: "clarity", label: "Clarity" },
-    { key: "criticalThinking", label: "Critical Thinking" },
-  ] as const;
-
-  return (
-    <div className="space-y-4">
-      {/* Question */}
-      <div>
-        <p className="text-xs font-medium text-muted-foreground">Prompt</p>
-        <p className="mt-1 text-sm italic text-foreground">{activity.question}</p>
-      </div>
-
-      {/* Score Breakdown */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {criteria.map((c) => {
-          const val = activity.scores[c.key];
-          return (
-            <div
-              key={c.key}
-              className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-center"
-            >
-              <p className="text-lg font-bold text-orange-400">{val}<span className="text-xs text-muted-foreground">/10</span></p>
-              <p className="text-[10px] text-muted-foreground">{c.label}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Per-criteria feedback */}
-      {activity.feedback?.perCriteria && (
-        <div className="space-y-2">
-          {criteria.map((c) => {
-            const fb = activity.feedback.perCriteria[c.key];
-            if (!fb) return null;
-            return (
-              <div key={c.key} className="rounded-lg border border-border bg-muted/50 p-3">
-                <p className="text-xs font-medium text-foreground">{c.label}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{fb}</p>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Summary */}
-      {activity.feedback?.summary && (
-        <div className="rounded-lg border border-border bg-muted/50 p-3">
-          <p className="text-xs font-medium text-foreground">Summary</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activity.feedback.summary}</p>
-        </div>
-      )}
-
-      {/* Improvements */}
-      {activity.feedback?.improvements?.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs font-medium text-foreground">Areas for Improvement</p>
-          <ul className="space-y-1">
-            {activity.feedback.improvements.map((imp, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-orange-400" />
-                {imp}
-              </li>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="space-y-2"
+          >
+            {filtered.map((activity, index) => (
+              <HistoryEntry
+                key={activity._id}
+                activity={activity}
+                isExpanded={expanded.has(activity._id)}
+                onToggle={() => toggleExpand(activity._id)}
+                index={index}
+              />
             ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Word count */}
-      <p className="text-[10px] text-muted-foreground">{activity.wordCount} words</p>
-    </div>
-  );
-}
-
-// ── Focus Session Details ──────────────────────────────
-
-function FocusDetails({ activity }: { activity: FocusActivity }) {
-  const totalGoals = activity.goals?.length || 0;
-  const completed = activity.completedGoals?.length || 0;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4 text-sm text-foreground">
-        <span>Duration: <span className="font-medium text-blue-400">{formatDuration(activity.duration)}</span></span>
-        {activity.sessionsCompleted != null && activity.sessionsCompleted > 0 && (
-          <span>Pomodoros: <span className="font-medium text-orange-400">{activity.sessionsCompleted}</span></span>
+          </motion.div>
         )}
-      </div>
-
-      {/* Goals */}
-      {totalGoals > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium text-foreground">
-            Goals ({completed}/{totalGoals} completed)
-          </p>
-          <div className="space-y-1.5">
-            {activity.goals.map((goal, i) => {
-              const isDone = activity.completedGoals?.includes(i);
-              return (
-                <div
-                  key={i}
-                  className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/50 px-3 py-2"
-                >
-                  <div
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                      isDone
-                        ? "border-emerald-500/50 bg-emerald-500/20"
-                        : "border-border"
-                    }`}
-                  >
-                    {isDone && (
-                      <svg className="h-2.5 w-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={`text-xs ${isDone ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                    {goal}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recap */}
-      {activity.recap && (
-        <div className="rounded-lg border border-border bg-muted/50 p-3">
-          <p className="text-xs font-medium text-foreground">Session Recap</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{activity.recap}</p>
-        </div>
-      )}
+      </AnimatePresence>
     </div>
   );
 }

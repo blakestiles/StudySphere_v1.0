@@ -9,8 +9,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { SparklesText } from "@/components/ui/sparkles-text";
-import { GlowingStarsBackgroundCard } from "@/components/ui/glowing-stars-card";
+import { motion } from "motion/react";
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Trophy,
+  RotateCcw,
+  ArrowLeft,
+  TrendingUp,
+  BarChart3,
+} from "lucide-react";
 
 interface Question {
   questionText: string;
@@ -35,33 +44,6 @@ interface ExamResultsProps {
   duration: number;
   onRetake: () => void;
   onBackToSetup: () => void;
-}
-
-/* -- Icons -- */
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <polyline points="20,6 9,17 4,12" />
-    </svg>
-  );
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function ClockIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12,6 12,12 16,14" />
-    </svg>
-  );
 }
 
 export default function ExamResults({
@@ -94,56 +76,69 @@ export default function ExamResults({
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
+  const scoreColors =
+    percentage >= 80
+      ? {
+          border: "border-emerald-500/20",
+          bgWash: "from-emerald-500/[0.07]",
+          topBar: "from-emerald-500 via-emerald-400",
+          text: "text-emerald-500",
+          label: "Excellent",
+        }
+      : percentage >= 60
+      ? {
+          border: "border-amber-500/20",
+          bgWash: "from-amber-500/[0.07]",
+          topBar: "from-amber-500 via-orange-400",
+          text: "text-amber-500",
+          label: "Good",
+        }
+      : {
+          border: "border-red-500/20",
+          bgWash: "from-red-500/[0.07]",
+          topBar: "from-red-500 via-red-400",
+          text: "text-red-500",
+          label: "Needs Work",
+        };
+
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="space-y-5"
+    >
       {/* Score Card */}
-      {percentage >= 70 ? (
-        <GlowingStarsBackgroundCard className="p-6 w-full text-center">
-          <div className="text-5xl font-bold mb-2 flex justify-center">
-            <SparklesText text={`${percentage}%`} className="text-5xl font-bold text-amber-400" />
-          </div>
-          <p className="text-muted-foreground text-lg">
+      <div className={`relative rounded-2xl border ${scoreColors.border} bg-card overflow-hidden`}>
+        <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${scoreColors.topBar} to-transparent`} />
+        <div className={`absolute inset-0 bg-gradient-to-br ${scoreColors.bgWash} via-transparent to-transparent pointer-events-none`} />
+        <div className="p-6 relative text-center">
+          <p className={`font-display text-6xl font-bold ${scoreColors.text}`}>
+            {percentage}%
+          </p>
+          <p className="text-[13px] font-semibold text-muted-foreground mt-1">{scoreColors.label}</p>
+          <p className="text-lg text-muted-foreground mt-0.5">
             {score} / {totalQuestions} correct
           </p>
-          <div className="flex items-center justify-center gap-6 mt-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <ClockIcon className="h-4 w-4" />
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
+              <Clock className="h-3.5 w-3.5" />
               {formatTime(timeTaken)} / {formatTime(duration * 60)}
             </span>
-            <span>Avg {avgTimePerQuestion}s per question</span>
+            <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Avg {avgTimePerQuestion}s per question
+            </span>
           </div>
-        </GlowingStarsBackgroundCard>
-      ) : (
-          <div className="p-6 text-center">
-            <div className="text-5xl font-bold mb-2">
-              <span
-                className={
-                  percentage >= 50
-                    ? "text-yellow-500"
-                    : "text-red-500"
-                }
-              >
-                {percentage}%
-              </span>
-            </div>
-            <p className="text-muted-foreground text-lg">
-              {score} / {totalQuestions} correct
-            </p>
-            <div className="flex items-center justify-center gap-6 mt-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <ClockIcon className="h-4 w-4" />
-                {formatTime(timeTaken)} / {formatTime(duration * 60)}
-              </span>
-              <span>Avg {avgTimePerQuestion}s per question</span>
-            </div>
-          </div>
-      )}
+        </div>
+      </div>
 
       {/* Time Per Question Chart */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3">
-          Time Per Question (seconds)
-        </h3>
+      <div className="rounded-2xl border border-border/60 bg-card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[13px] font-semibold text-foreground">Time Per Question</h3>
+          <BarChart3 className="h-4 w-4 text-muted-foreground/50" />
+        </div>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={timeChartData}>
@@ -151,19 +146,21 @@ export default function ExamResults({
               <XAxis dataKey="name" fontSize={11} />
               <YAxis fontSize={11} />
               <Tooltip />
-              <Bar
-                dataKey="time"
-                fill="#f97316"
-                radius={[4, 4, 0, 0]}
-              />
+              <Bar dataKey="time" fill="#f97316" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Per-Question Review */}
+      {/* Question Review */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Question Review</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[13px] font-semibold text-foreground">Question Review</h3>
+          <span className="text-[11px] text-muted-foreground bg-muted/40 border border-border/40 rounded-lg px-2.5 py-1">
+            {score}/{totalQuestions} correct
+          </span>
+        </div>
+
         {questions.map((q, i) => {
           const response = responses.find((r) => r.questionIndex === i);
           const isCorrect = response?.isCorrect ?? false;
@@ -172,35 +169,47 @@ export default function ExamResults({
           return (
             <div
               key={i}
-              className={`rounded-lg border p-4 ${
-                isCorrect ? "border-green-500/30 bg-green-500/5" : "border-red-500/30 bg-red-500/5"
+              className={`rounded-2xl border p-4 ${
+                isCorrect
+                  ? "border-emerald-500/20 bg-emerald-500/[0.04]"
+                  : "border-red-500/20 bg-red-500/[0.04]"
               }`}
             >
-              <div className="flex items-start gap-2 mb-2">
+              <div className="flex items-start gap-2.5 mb-3">
                 {isCorrect ? (
-                  <CheckIcon className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                  <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 mt-0.5 shrink-0" />
                 ) : (
-                  <XIcon className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+                  <XCircle className="h-4.5 w-4.5 text-red-500 mt-0.5 shrink-0" />
                 )}
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">
-                    Q{i + 1}. {q.questionText}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground">Q{i + 1}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 px-1.5 py-0.5 rounded bg-muted/40 border border-border/40 capitalize">
+                      {q.difficulty}
+                    </span>
+                    {response && (
+                      <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {Math.round(response.timeSpent)}s
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[13.5px] font-medium text-foreground leading-snug">
+                    {q.questionText}
                   </p>
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {q.difficulty} &middot; {response ? `${Math.round(response.timeSpent)}s` : "N/A"}
-                  </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 ml-7">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 ml-7">
                 {q.options.map((opt, j) => (
                   <div
                     key={j}
-                    className={`text-xs px-2 py-1 rounded ${
+                    className={`text-xs rounded-lg px-2.5 py-1.5 ${
                       j === q.correctAnswer
-                        ? "bg-green-500/20 text-green-700 dark:text-green-400 font-medium"
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-medium border border-emerald-500/25"
                         : j === selected && !isCorrect
-                        ? "bg-red-500/20 text-red-700 dark:text-red-400"
-                        : "text-muted-foreground"
+                        ? "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/25"
+                        : "text-muted-foreground/60"
                     }`}
                   >
                     {String.fromCharCode(65 + j)}. {opt}
@@ -216,17 +225,19 @@ export default function ExamResults({
       <div className="flex gap-3">
         <button
           onClick={onRetake}
-          className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium text-sm hover:opacity-90 transition"
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-[13px] font-semibold text-white hover:opacity-90 transition"
         >
+          <RotateCcw className="h-4 w-4" />
           Retake Exam
         </button>
         <button
           onClick={onBackToSetup}
-          className="flex-1 py-2.5 rounded-lg border border-border text-foreground font-medium text-sm hover:bg-muted transition"
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-muted/30 py-2.5 text-[13px] font-medium text-foreground hover:bg-muted/50 transition"
         >
+          <ArrowLeft className="h-4 w-4" />
           Back to Setup
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -42,7 +42,7 @@ const navGroups = [
     label: "Learn",
     items: [
       { label: "Documents", href: "/documents", icon: FileText, color: "blue" },
-      { label: "Study Packs", href: "/study-packs", icon: BookOpen, color: "amber" },
+      { label: "Study Packs", href: "/study-packs", icon: BookOpen, color: "blue" },
       { label: "AI Tutor", href: "/chat", icon: MessageSquare, color: "blue" },
       { label: "Audio Study", href: "/audio-study", icon: Headphones, color: "blue" },
     ],
@@ -59,17 +59,17 @@ const navGroups = [
     label: "Track",
     items: [
       { label: "Analytics", href: "/analytics", icon: BarChart3, color: "violet" },
-      { label: "Calendar", href: "/calendar", icon: CalendarDays, color: "emerald" },
-      { label: "Study Plan", href: "/study-plan", icon: CalendarRange, color: "amber" },
-      { label: "Weekly Report", href: "/weekly-report", icon: FileBarChart, color: "amber" },
-      { label: "History", href: "/history", icon: History, color: "gray" },
+      { label: "Calendar", href: "/calendar", icon: CalendarDays, color: "violet" },
+      { label: "Study Plan", href: "/study-plan", icon: CalendarRange, color: "violet" },
+      { label: "Weekly Report", href: "/weekly-report", icon: FileBarChart, color: "violet" },
+      { label: "History", href: "/history", icon: History, color: "violet" },
     ],
   },
   {
     label: "Create",
     items: [
       { label: "Notebooks", href: "/notebooks", icon: NotebookPen, color: "emerald" },
-      { label: "Goals", href: "/goals", icon: Trophy, color: "amber" },
+      { label: "Goals", href: "/goals", icon: Trophy, color: "emerald" },
     ],
   },
   {
@@ -139,12 +139,15 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] border-r border-border/40 bg-sidebar/95 backdrop-blur-xl transition-all duration-300 flex flex-col",
+          "fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] border-r border-border/30 bg-sidebar/98 backdrop-blur-2xl transition-all duration-300 flex flex-col shadow-[1px_0_0_0_oklch(1_0_0_/_4%)]",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           "md:translate-x-0",
           collapsed ? "md:w-[60px]" : "md:w-60"
         )}
       >
+        {/* Brand accent line */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent pointer-events-none" />
+
         {/* Mobile close */}
         <div className="flex items-center justify-end p-2 md:hidden">
           <button
@@ -173,11 +176,14 @@ export default function Sidebar() {
             <div key={gi}>
               {/* Group label */}
               {group.label && !collapsed && (
-                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50 font-display">
-                  {group.label}
-                </p>
+                <div className="flex items-center gap-2 px-3 mb-1">
+                  <p className="nav-group-label text-muted-foreground/50 font-display">
+                    {group.label}
+                  </p>
+                  <div className="flex-1 h-px bg-border/30" />
+                </div>
               )}
-              {group.label && collapsed && <div className="my-1 mx-2 h-px bg-border/50" />}
+              {group.label && collapsed && <div className="my-1 mx-2 h-px bg-border/40" />}
 
               <div className="space-y-0.5">
                 {group.items.map((item, index) => {
@@ -195,8 +201,8 @@ export default function Sidebar() {
                             "relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-200 group",
                             collapsed && "md:justify-center md:px-0 md:py-2.5",
                             isActive
-                              ? `${colors.active} shadow-sm ${colors.glow} shadow-[inset_0_0_12px_rgba(249,115,22,0.08)]`
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                              ? `${colors.active} shadow-sm ${colors.glow} shadow-[inset_0_0_16px_rgba(249,115,22,0.07)]`
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/35 hover:shadow-[inset_0_1px_0_0_oklch(1_0_0_/_5%)]"
                           )}
                         >
                           {isActive && (
@@ -209,8 +215,8 @@ export default function Sidebar() {
                           {isActive && (
                             <motion.div
                               layoutId="sidebar-indicator"
-                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gradient-to-b from-amber-400 to-orange-500 shadow-[0_0_8px_rgba(251,146,60,0.6)]"
-                              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-gradient-to-b from-amber-300 via-amber-500 to-orange-500 shadow-[0_0_12px_rgba(251,146,60,0.7),0_0_4px_rgba(251,146,60,0.4)]"
+                              transition={{ type: "spring", stiffness: 500, damping: 40 }}
                             />
                           )}
                           <Icon className={cn(

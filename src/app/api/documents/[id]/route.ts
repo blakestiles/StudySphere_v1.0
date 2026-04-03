@@ -77,8 +77,8 @@ export async function DELETE(
 
     await Document.findByIdAndDelete(id);
 
-    revalidateTag(TAGS.documents(session.user.id));
-    revalidateTag(TAGS.dashboard(session.user.id));
+    revalidateTag(TAGS.documents(session.user.id), "");
+    revalidateTag(TAGS.dashboard(session.user.id), "");
     return NextResponse.json({ message: "Document deleted" });
   } catch (error) {
     console.error("Document DELETE error:", error);

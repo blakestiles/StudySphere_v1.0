@@ -78,7 +78,7 @@ export async function PATCH(
 
     await goal.save();
 
-    revalidateTag(TAGS.goals(session.user.id));
+    revalidateTag(TAGS.goals(session.user.id), "");
     return NextResponse.json({ goal });
   } catch (error) {
     console.error("Goal update error:", error);
@@ -106,7 +106,7 @@ export async function DELETE(
 
     await Goal.findByIdAndDelete(id);
 
-    revalidateTag(TAGS.goals(session.user.id));
+    revalidateTag(TAGS.goals(session.user.id), "");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Goal delete error:", error);

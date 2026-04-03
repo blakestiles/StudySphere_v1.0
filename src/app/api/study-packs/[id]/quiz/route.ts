@@ -80,6 +80,10 @@ export async function POST(
         questionId: a.questionId,
         selectedAnswer: a.selectedAnswer,
         isCorrect,
+        questionText: question?.question || "",
+        options: question?.options || [],
+        correctAnswer: question?.correctAnswer ?? null,
+        explanation: question?.explanation || "",
       };
     });
 

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       deadline: result.data.deadline ? new Date(result.data.deadline) : undefined,
     });
 
-    revalidateTag(TAGS.goals(session.user.id));
+    revalidateTag(TAGS.goals(session.user.id), "");
     return NextResponse.json({ goal }, { status: 201 });
   } catch (error) {
     console.error("Goal create error:", error);

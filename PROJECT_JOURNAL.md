@@ -3,7 +3,7 @@
 **Student:** Sainath Gandhe
 **Course:** CPSC 589 - California State University, Fullerton
 **Project:** StudySphere - AI-Powered Study Companion
-**Date:** March 18, 2026
+**Date:** April 2, 2026
 
 ---
 
@@ -103,6 +103,18 @@ After achieving full feature parity in Weeks 9-10, I continued expanding the app
 
 **Navigation updates:** The sidebar was updated to cover all 23 pages. The command palette (Cmd+K) was updated with all new pages. The auth config was extended to protect all new routes. The `NotificationBell` component was added to the Navbar.
 
+### Week 11: UI Redesign Sprint, Knowledge Graph Enhancements & Profile Overhaul (Completed Apr. 2, 2026)
+
+With all features implemented and functional, I undertook a comprehensive UI redesign sprint to establish a consistent design system across every page in the application and add meaningful new functionality to the Knowledge Graph and Profile sections.
+
+**Design system standardization:** I identified and eliminated all dark-mode-only third-party components that were inconsistent with the light/dark theme toggle — specifically `SparklesText`, `ShineBorder`, `Meteors`, `GlowingStarsBackgroundCard`, `AnimatedGenerateButton`, `BlurFade`, `ShimmerButton`, `SlideButton`, `TextGenerateEffect`, and `DisplayCards`. These were replaced with a unified amber-based design language across all 24 pages. The standard now is: `rounded-2xl border border-border/60 bg-card` card shell, `h-[2px] bg-gradient-to-r from-amber-500 via-orange-400 to-transparent` top accent bar, amber gradient buttons with oklch-based glow shadows, Lucide icons throughout (no more custom SVG components), theme-aware color pairs (e.g., `text-emerald-600 dark:text-emerald-400`), and `motion/react` for stagger animations and `AnimatePresence` transitions. All inputs are native `<input>`/`<textarea>` with `focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10` styling instead of shadcn `Input`/`Textarea`.
+
+**Pages redesigned:** Analytics, Calendar, Study Plan, Weekly Report, History, Notebooks, Goals, Knowledge Graph, and Profile — all now use the consistent design system.
+
+**Knowledge Graph enhancements:** I added three major new features to the Knowledge Graph page. First, a **Mastery Overlay** toggle button in the toolbar — when activated, it fetches the user's quiz history from `/api/history`, maps attempts to packs by title, computes average scores per pack, and re-colors all nodes: green (≥80%), yellow (60–79%), red (<60%), or gray (no attempts). A mastery legend card appears in the sidebar. Second, a **Graph Insights panel** that automatically computes hub analysis and isolation statistics after the graph loads — it shows the most-connected topic (clickable to pan and select), the count of cross-pack bridge topics, and isolated topics (topics with no cross-pack links) with an amber warning if any exist. Third, **Quick Study Actions** in the node detail panel — "Flashcards" and "Take Quiz" buttons give users a direct path from discovering a topic in the graph to studying it, alongside the existing "Open Study Pack" button which now has an `ArrowRight` icon.
+
+**Profile overhaul:** I completely rebuilt the Profile page, replacing all dark-only components with a design-system-compliant layout. The new profile header uses an amber-gradient avatar with an emerald online indicator dot, inline edit mode with `AnimatePresence` for smooth transitions, and a member-since chip alongside an active-streak badge. A new **streak hero strip** shows the current streak (with an orange flame icon and glow), total study time, and longest streak in a horizontal layout. The stats grid was reorganized from a mixed 3-column layout (which embedded a `GlowingStarsBackgroundCard` in the center) into a clean 4-column grid with color-coded top bar gradients per metric. The achievements section replaced emoji icons and `BlurFade` animations with Lucide icons in amber-accented badge cards — unlocked achievements get an amber glow border and a thin amber light streak at the top; locked ones show a padlock icon. The security section uses native inputs with a `Shield` accent. The page now has a `TextShimmer` title matching all other pages.
+
 ---
 
 ## 2. Challenges
@@ -145,27 +157,35 @@ None. All Week 5-10 deliverables are fully implemented and functional. The appli
 
 ## 4. TODO
 
-**Weeks 11-12 — Testing & Refinement (target: Mar. 16, 2026)**
-- Unit and integration testing for all 46 API routes
-- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → exam → doubt resolver → matching game → fill-in-blank → goals → weekly report → analytics)
-- Performance optimization (database query indexing, response payload optimization)
-- UI/UX refinements based on testing feedback and usability review
-- **Evaluation:** All tests pass, no critical bugs, response times are acceptable under normal load.
-- **Deliverables:** Test suite, performance benchmarks, bug fixes, code pushed to GitHub
+**Week 11 — UI Redesign Sprint & Feature Enhancements (COMPLETED Apr. 2, 2026)**
+- ✅ Established unified amber design system across all 24 pages
+- ✅ Removed all dark-only third-party components (SparklesText, ShineBorder, Meteors, etc.)
+- ✅ Redesigned Analytics, Calendar, Study Plan, Weekly Report, History, Notebooks, Goals, Knowledge Graph, Profile pages
+- ✅ Added Knowledge Graph Mastery Overlay (quiz-performance node coloring)
+- ✅ Added Knowledge Graph Insights panel (hub topics, isolated topics, cross-pack bridges)
+- ✅ Added Knowledge Graph Quick Study Actions (Flashcards + Take Quiz buttons in node panel)
+- ✅ Rebuilt Profile page with streak hero, 4-column stats grid, redesigned achievements, amber design language
 
-**Week 12 — Deployment & Documentation (target: Mar. 30, 2026)**
+**Weeks 11-12 — Testing & Refinement (target: Apr. 6, 2026)**
+- End-to-end testing for critical user flows (register → upload → generate → quiz → review weak areas → focus session → tutor chat → essay → exam → matching game tab → fill-in-blank tab → goals → weekly report → analytics)
+- Performance optimization (database query indexing, response payload optimization)
+- Final bug fixes from testing pass
+- **Evaluation:** No critical bugs, response times acceptable under normal load.
+- **Deliverables:** Bug fixes, code pushed to GitHub
+
+**Week 12 — Deployment & Documentation (target: Apr. 6, 2026)**
 - Deploy to Vercel with production environment configuration
 - Configure production MongoDB Atlas cluster with proper access controls
 - Set up environment variables (MONGODB_URI, NEXTAUTH_SECRET, ANTHROPIC_API_KEY)
-- Write user documentation, API documentation, and project setup guide
-- **Evaluation:** Application is accessible via a public URL, all features work in the production environment, documentation is clear and complete.
+- Write user documentation and project setup guide
+- **Evaluation:** Application accessible via public URL, all features work in production.
 - **Deliverables:** Live deployment URL, documentation, code pushed to GitHub
 
 **Week 13 — Final Submission (target: Apr. 6, 2026)**
 - Final testing in production environment
 - Project presentation preparation
 - Submit final deliverables and documentation
-- **Evaluation:** Presentation is complete, all deliverables are submitted on time.
+- **Evaluation:** Presentation complete, all deliverables submitted on time.
 - **Deliverables:** Final presentation, project report, source code, live deployment
 
 ---
