@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -205,7 +205,7 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
-  const achievements = getAchievements(stats, user);
+  const achievements = useMemo(() => getAchievements(stats, user), [stats, user]);
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   const handleSave = async (e: React.FormEvent) => {
@@ -230,6 +230,7 @@ export default function ProfilePage({ user, stats }: ProfilePageProps) {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPassword) { toast.error("Current password is required"); return; }
     if (newPassword !== confirmNewPassword) { toast.error("New passwords don't match"); return; }
     if (newPassword.length < 6) { toast.error("New password must be at least 6 characters"); return; }
     setChangingPassword(true);

@@ -134,6 +134,8 @@ export default function KnowledgeGraph() {
   const selectedNodeRef = useRef<TopicNode | null>(null);
   const tickCount = useRef(0);
   const sizeRef = useRef({ w: 1000, h: 650 });
+  const nodeIndexMapRef = useRef<Map<string, number>>(new Map());
+  const nodeMapRef = useRef<Map<string, TopicNode>>(new Map());
 
   // Filter/search refs for render loop access
   const hiddenPacksRef = useRef<Set<string>>(new Set());
@@ -177,10 +179,16 @@ export default function KnowledgeGraph() {
           nameMap[pack._id] = pack.title;
         });
 
-        for (const pack of packs) {
-          const topicsRes = await fetch(`/api/study-packs/${pack._id}`);
-          if (!topicsRes.ok) continue;
-          const packData = await topicsRes.json();
+        const packResponses = await Promise.all(
+          packs.map((pack: any) =>
+            fetch(`/api/study-packs/${pack._id}`).then(r => r.ok ? r.json() : null)
+          )
+        );
+
+        for (let pi = 0; pi < packs.length; pi++) {
+          const pack = packs[pi];
+          const packData = packResponses[pi];
+          if (!packData) continue;
           const packTopics = packData.topics || [];
           const packFlashcards = packData.flashcards || [];
           const packQuizQuestions = packData.quizQuestions || [];
@@ -238,6 +246,8 @@ export default function KnowledgeGraph() {
         packColorMapRef.current = colorMap;
         packNamesRef.current = nameMap;
         nodesRef.current = allTopics;
+        nodeMapRef.current = new Map(allTopics.map(n => [n.id, n]));
+        nodeIndexMapRef.current = new Map(allTopics.map((n, i) => [n.id, i]));
         edgesRef.current = allEdges;
 
         // Compute graph insights
@@ -412,14 +422,9 @@ export default function KnowledgeGraph() {
         if (res.ok) {
           const activities = await res.json();
           const quizActivities = (activities as any[]).filter((a) => a.type === "quiz");
-          // Reverse map: title → packId
-          const titleToPackId: Record<string, string> = {};
-          for (const [packId, title] of Object.entries(packNamesRef.current)) {
-            titleToPackId[title] = packId;
-          }
           const byPack: Record<string, number[]> = {};
           for (const q of quizActivities) {
-            const packId = titleToPackId[q.title];
+            const packId = q.packId as string | undefined;
             if (!packId) continue;
             const pct = q.totalQuestions > 0 ? (q.score / q.totalQuestions) * 100 : 0;
             if (!byPack[packId]) byPack[packId] = [];
@@ -516,7 +521,7 @@ export default function KnowledgeGraph() {
         }
       }
 
-      const nodeMap = new Map(ns.map(n => [n.id, n]));
+      const nodeMap = nodeMapRef.current;
 
       // Attraction along edges — larger target distances
       for (const e of es) {
@@ -574,14 +579,15 @@ export default function KnowledgeGraph() {
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       // Background
+      const isDark = document.documentElement.classList.contains("dark");
       const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.7);
-      bg.addColorStop(0, "#0f1729");
-      bg.addColorStop(1, "#060a14");
+      bg.addColorStop(0, isDark ? "#0f1729" : "#f0f4ff");
+      bg.addColorStop(1, isDark ? "#060a14" : "#e8eef8");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
       // Subtle grid
-      ctx.strokeStyle = "rgba(148,163,184,0.04)";
+      ctx.strokeStyle = isDark ? "rgba(148,163,184,0.04)" : "rgba(100,116,139,0.06)";
       ctx.lineWidth = 0.5;
       const t = transformRef.current;
       const gridSize = 40 * t.scale;
@@ -602,7 +608,7 @@ export default function KnowledgeGraph() {
       const ns = nodesRef.current;
       const es = edgesRef.current;
       const sel = selectedNodeRef.current;
-      const nodeMap = new Map(ns.map(n => [n.id, n]));
+      const nodeMap = nodeMapRef.current;
       const colors = packColorMapRef.current;
 
       // Connected set for highlighting
@@ -708,7 +714,7 @@ export default function KnowledgeGraph() {
         const r = (isHovered ? n.radius + 3 : n.radius) + sizeBonus;
 
         // Each node gets a unique phase offset based on its position in the array
-        const nodeIndex = ns.indexOf(n);
+        const nodeIndex = nodeIndexMapRef.current.get(n.id) ?? 0;
         const phase = nodeIndex * 1.37;
 
         // ── Layer 1: Outer breathing aura ──
@@ -818,14 +824,14 @@ export default function KnowledgeGraph() {
         ctx.textAlign = "center";
         const label = n.name.length > 28 ? n.name.slice(0, 26) + "\u2026" : n.name;
         // Text shadow
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillStyle = isDark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)";
         ctx.fillText(label, n.x + 1, n.y + r + 18);
         // Actual text
         ctx.fillStyle = isDimmed || isSearchDimmed
-          ? "rgba(203,213,225,0.45)"
+          ? isDark ? "rgba(203,213,225,0.45)" : "rgba(100,116,139,0.5)"
           : isSelected
-          ? "rgba(255,255,255,1)"
-          : "rgba(220,230,240,0.85)";
+          ? isDark ? "rgba(255,255,255,1)" : "rgba(15,23,42,1)"
+          : isDark ? "rgba(220,230,240,0.85)" : "rgba(30,41,59,0.85)";
         ctx.fillText(label, n.x, n.y + r + 17);
 
         ctx.globalAlpha = 1;
@@ -848,6 +854,9 @@ export default function KnowledgeGraph() {
       window.removeEventListener("resize", resize);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // All mutable state (nodes, edges, transform, hover, drag) is accessed via refs, so there
+    // are no stale closures. Adding those refs as dependencies would restart the animation loop
+    // on every interaction tick — which is exactly what we want to avoid.
   }, [loading]);
 
   // Zoom controls

@@ -153,12 +153,12 @@ export function getCachedDashboardData(userId: string, fallbackName: string): Pr
         studyPackCount: studyPacks.length,
         quizCount,
         weakAreaCount,
-        currentStreak: (user as any)?.currentStreak || 0,
-        longestStreak: (user as any)?.longestStreak || 0,
+        currentStreak: (user as any)?.currentStreak ?? 0,
+        longestStreak: (user as any)?.longestStreak ?? 0,
         userName: (user as any)?.name || fallbackName,
         chartData: (recentStats as any[]).map(s => ({
           date: new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          reviews: s.cardsReviewed || 0,
+          reviews: s.cardsReviewed ?? 0,
         })),
       };
     },

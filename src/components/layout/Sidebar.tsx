@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
-import BlurFade from "@/components/ui/blur-fade";
 
 const navGroups = [
   {
@@ -108,7 +107,7 @@ export default function Sidebar() {
   // Pre-warm all sidebar routes so navigation is instant
   useEffect(() => {
     allNavItems.forEach((item) => router.prefetch(item.href));
-  }, [router]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- prefetch once on mount only
 
   useEffect(() => {
     const handleToggle = () => setMobileOpen((prev) => !prev);
@@ -173,7 +172,7 @@ export default function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2 pb-6 space-y-5">
           {navGroups.map((group, gi) => (
-            <div key={gi}>
+            <div key={group.label ?? `top-${gi}`}>
               {/* Group label */}
               {group.label && !collapsed && (
                 <div className="flex items-center gap-2 px-3 mb-1">
@@ -192,7 +191,12 @@ export default function Sidebar() {
                   const colors = colorMap[item.color] || colorMap.amber;
 
                   return (
-                    <BlurFade key={item.href} delay={index * 0.03}>
+                    <motion.div
+                      key={item.href}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03, duration: 0.18, ease: "easeOut" }}
+                    >
                       <div className={cn(isActive && "relative overflow-hidden rounded-xl")}>
                         <Link
                           href={item.href}
@@ -231,7 +235,7 @@ export default function Sidebar() {
                           )}
                         </Link>
                       </div>
-                    </BlurFade>
+                    </motion.div>
                   );
                 })}
               </div>

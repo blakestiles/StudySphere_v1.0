@@ -68,10 +68,12 @@ const RECENT_KEY = "ss:recent-pages";
 const MAX_RECENT = 4;
 
 function getRecent(): string[] {
+  if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
 }
 
 function pushRecent(href: string) {
+  if (typeof window === "undefined") return;
   try {
     const prev = getRecent().filter((h) => h !== href);
     localStorage.setItem(RECENT_KEY, JSON.stringify([href, ...prev].slice(0, MAX_RECENT)));

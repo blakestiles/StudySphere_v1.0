@@ -63,6 +63,7 @@ export async function GET() {
       ...quizAttempts.map((q: Record<string, any>) => ({
         _id: q._id.toString(),
         type: "quiz" as const,
+        packId: q.studyPackId?._id?.toString() ?? null,
         title: q.studyPackId?.title || "Unknown Pack",
         date: q.completedAt,
         score: q.score,

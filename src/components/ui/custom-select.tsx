@@ -29,6 +29,9 @@ export default function CustomSelect({
 }: CustomSelectProps) {
   return (
     <Select.Root value={value || ""} onValueChange={onValueChange} disabled={disabled}>
+      {/* suppressHydrationWarning: Radix generates aria-controls IDs that differ between SSR
+          and client hydration (counter-based). The mismatch is purely cosmetic (ID strings only)
+          and does not affect functionality or accessibility — safe to suppress. */}
       <Select.Trigger
         suppressHydrationWarning
         className={cn(
