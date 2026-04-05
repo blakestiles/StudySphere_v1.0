@@ -25,6 +25,9 @@ import {
   Trophy,
   Headphones,
   FileBarChart,
+  Store,
+  ScrollText,
+  Calculator,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -44,6 +47,7 @@ const navGroups = [
       { label: "Study Packs", href: "/study-packs", icon: BookOpen, color: "blue" },
       { label: "AI Tutor", href: "/chat", icon: MessageSquare, color: "blue" },
       { label: "Audio Study", href: "/audio-study", icon: Headphones, color: "blue" },
+      { label: "Cheat Sheets", href: "/cheat-sheets", icon: ScrollText, color: "blue" },
     ],
   },
   {
@@ -62,6 +66,7 @@ const navGroups = [
       { label: "Study Plan", href: "/study-plan", icon: CalendarRange, color: "violet" },
       { label: "Weekly Report", href: "/weekly-report", icon: FileBarChart, color: "violet" },
       { label: "History", href: "/history", icon: History, color: "violet" },
+      { label: "Grade Calculator", href: "/grade-calculator", icon: Calculator, color: "amber" },
     ],
   },
   {
@@ -75,6 +80,7 @@ const navGroups = [
     label: "Explore",
     items: [
       { label: "Knowledge Graph", href: "/knowledge-graph", icon: Brain, color: "cyan" },
+      { label: "Study Exchange", href: "/marketplace", icon: Store, color: "cyan" },
     ],
   },
   {

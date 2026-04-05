@@ -88,6 +88,7 @@ export async function POST(request: Request) {
           question: fc.question,
           answer: fc.answer,
           difficulty: fc.difficulty,
+          sourcePage: fc.sourcePage ?? null,
         });
       }
 

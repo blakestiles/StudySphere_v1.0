@@ -5,6 +5,7 @@ import Link from "next/link";
 import RecentDocuments from "./RecentDocuments";
 import BlurFade from "@/components/ui/blur-fade";
 import AnimatedGridPattern from "@/components/ui/animated-grid-pattern";
+import ExamWidget from "./ExamWidget";
 
 interface DashboardClientProps {
   userName: string;
@@ -18,7 +19,7 @@ interface DashboardClientProps {
   documents: {
     _id: string;
     title: string;
-    fileType: "pdf" | "text";
+    fileType: "pdf" | "text" | "image" | "url" | "notion" | "gdocs";
     status: "processing" | "ready" | "error";
     uploadedAt: string;
   }[];
@@ -279,6 +280,11 @@ export default function DashboardClient({
           </BlurFade>
         ))}
       </div>
+
+      {/* ── Exam Countdown Widget ────────────────────────── */}
+      <BlurFade delay={0.22}>
+        <ExamWidget />
+      </BlurFade>
 
       {/* ── Bento Row: Recent Docs + Sidebar ────────────── */}
       <BlurFade delay={0.25}>

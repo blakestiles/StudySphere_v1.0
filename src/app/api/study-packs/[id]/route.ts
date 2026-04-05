@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
+import { TAGS } from "@/lib/data-cache";
 import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
 import Flashcard from "@/models/Flashcard";
 import QuizQuestion from "@/models/QuizQuestion";
+import ClozeQuestion from "@/models/ClozeQuestion";
 
 export async function GET(
   request: Request,
@@ -37,6 +40,45 @@ export async function GET(
     return NextResponse.json({ studyPack, topics, flashcards, quizQuestions });
   } catch (error) {
     console.error("Get study pack error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    await connectDB();
+
+    const studyPack = await StudyPack.findById(id);
+    if (!studyPack) {
+      return NextResponse.json({ error: "Study pack not found" }, { status: 404 });
+    }
+
+    if (studyPack.userId.toString() !== session.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    await Promise.all([
+      Topic.deleteMany({ studyPackId: id }),
+      Flashcard.deleteMany({ studyPackId: id }),
+      QuizQuestion.deleteMany({ studyPackId: id }),
+      ClozeQuestion.deleteMany({ studyPackId: id }),
+    ]);
+    await StudyPack.findByIdAndDelete(id);
+
+    revalidateTag(TAGS.studyPacks(session.user.id), "");
+    revalidateTag(TAGS.dashboard(session.user.id), "");
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete study pack error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

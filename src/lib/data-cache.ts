@@ -36,9 +36,9 @@ export const TAGS = {
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type SerializedPack    = { _id: string; title: string };
-export type SerializedPackFull = { id: string; title: string; status: string; docTitle: string; createdAt: string };
-export type SerializedDoc     = { _id: string; title: string; fileType: "pdf" | "text"; status: "processing" | "ready" | "error"; uploadedAt: string };
+export type SerializedPack    = { _id: string; title: string; examDate?: string | null };
+export type SerializedPackFull = { id: string; title: string; status: string; docTitle: string; createdAt: string; isPublic: boolean };
+export type SerializedDoc     = { _id: string; title: string; fileType: "pdf" | "text" | "image" | "url" | "notion" | "gdocs"; status: "processing" | "ready" | "error"; uploadedAt: string };
 export type SerializedGoal    = {
   _id: string; title: string; description: string; targetType: string;
   targetValue: number; currentValue: number; deadline: string | undefined;
@@ -68,8 +68,12 @@ export function getCachedReadyPacks(userId: string): Promise<SerializedPack[]> {
   return unstable_cache(
     async () => {
       await connectDB();
-      const packs = await StudyPack.find({ userId, status: "ready" }).select("title").lean();
-      return packs.map(sp => ({ _id: String(sp._id), title: sp.title as string }));
+      const packs = await StudyPack.find({ userId, status: "ready" }).select("title examDate").lean();
+      return packs.map(sp => ({
+        _id: String(sp._id),
+        title: sp.title as string,
+        examDate: (sp as any).examDate ? new Date((sp as any).examDate).toISOString() : null,
+      }));
     },
     [`ready-packs:${userId}`],
     { revalidate: MEDIUM, tags: [TAGS.studyPacks(userId)] }
@@ -93,6 +97,7 @@ export function getCachedAllPacks(userId: string): Promise<SerializedPackFull[]>
           status: sp.status as string,
           docTitle: doc && typeof doc === "object" && "title" in doc ? (doc.title || "Unknown document") : "Unknown document",
           createdAt: new Date(sp.createdAt as any).toLocaleDateString(),
+          isPublic: (sp.isPublic as boolean) ?? false,
         };
       });
     },
@@ -110,7 +115,7 @@ export function getCachedDocuments(userId: string): Promise<SerializedDoc[]> {
       return docs.map(d => ({
         _id: String(d._id),
         title: d.title as string,
-        fileType: d.fileType as "pdf" | "text",
+        fileType: d.fileType as "pdf" | "text" | "image" | "url" | "notion" | "gdocs",
         status: d.status as "processing" | "ready" | "error",
         uploadedAt: new Date(d.uploadedAt as any).toISOString(),
       }));
@@ -145,7 +150,7 @@ export function getCachedDashboardData(userId: string, fallbackName: string): Pr
         documents: documents.map(d => ({
           _id: String(d._id),
           title: d.title as string,
-          fileType: d.fileType as "pdf" | "text",
+          fileType: d.fileType as "pdf" | "text" | "image" | "url" | "notion" | "gdocs",
           status: d.status as "processing" | "ready" | "error",
           uploadedAt: new Date(d.uploadedAt as any).toISOString(),
         })),

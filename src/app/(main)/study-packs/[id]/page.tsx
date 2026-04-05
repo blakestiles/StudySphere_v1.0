@@ -8,6 +8,7 @@ import Flashcard from "@/models/Flashcard";
 import QuizQuestion from "@/models/QuizQuestion";
 import ClozeQuestion from "@/models/ClozeQuestion";
 import StudyPackDetail from "@/components/features/study-packs/StudyPackDetail";
+import ExamCountdown from "@/components/features/study-packs/ExamCountdown";
 
 export default async function StudyPackPage({
   params,
@@ -45,6 +46,7 @@ export default async function StudyPackPage({
     mindMap: (studyPack as any).mindMap || null,
     shareToken: (studyPack as any).shareToken ?? null,
     isPublic: (studyPack as any).isPublic ?? false,
+    examDate: (studyPack as any).examDate ? new Date((studyPack as any).examDate).toISOString() : null,
   };
 
   const serializedTopics = topics.map((t) => ({
@@ -86,7 +88,12 @@ export default async function StudyPackPage({
   }));
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-4">
+      <ExamCountdown
+        packId={serializedStudyPack._id}
+        initialExamDate={serializedStudyPack.examDate}
+        packTitle={serializedStudyPack.title}
+      />
       <StudyPackDetail
         studyPack={serializedStudyPack}
         topics={serializedTopics}

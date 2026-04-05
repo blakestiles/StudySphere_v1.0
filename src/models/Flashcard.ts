@@ -6,6 +6,7 @@ const FlashcardSchema = new Schema({
   question: { type: String, required: true },
   answer: { type: String, required: true },
   difficulty: { type: String, enum: ["easy", "medium", "hard"], default: "medium" },
+  sourcePage: { type: Number, default: null },
   // SM-2 Spaced Repetition fields
   easeFactor: { type: Number, default: 2.5 },
   intervalDays: { type: Number, default: 0 },

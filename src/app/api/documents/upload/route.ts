@@ -3,8 +3,9 @@ import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Document from "@/models/Document";
-import { extractTextFromPDF } from "@/lib/pdf";
+import { extractTextWithPageMarkers } from "@/lib/pdf";
 import { TAGS } from "@/lib/data-cache";
+import client from "@/lib/claude";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -32,40 +33,87 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "File too large. Maximum 10MB" }, { status: 400 });
       }
 
-      if (file.type !== "application/pdf") {
-        return NextResponse.json({ error: "Only PDF files are supported" }, { status: 400 });
+      const isImage = ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type);
+      const isPDF = file.type === "application/pdf";
+
+      if (!isImage && !isPDF) {
+        return NextResponse.json({ error: "Only PDF or image files are supported" }, { status: 400 });
       }
 
-      const buffer = Buffer.from(await file.arrayBuffer());
+      let rawText = "";
 
-      // Validate PDF magic bytes — file.type is client-provided and spoofable
-      if (!buffer.slice(0, 5).toString("ascii").startsWith("%PDF-")) {
-        return NextResponse.json({ error: "File does not appear to be a valid PDF" }, { status: 400 });
+      if (isPDF) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+
+        // Validate PDF magic bytes — file.type is client-provided and spoofable
+        if (!buffer.slice(0, 5).toString("ascii").startsWith("%PDF-")) {
+          return NextResponse.json({ error: "File does not appear to be a valid PDF" }, { status: 400 });
+        }
+
+        rawText = await extractTextWithPageMarkers(buffer);
+
+        if (!rawText || rawText.trim().length === 0) {
+          return NextResponse.json({ error: "Could not extract text from PDF" }, { status: 400 });
+        }
+
+        const title = formData.get("title") as string || file.name.replace(".pdf", "");
+
+        const doc = await Document.create({
+          userId: session.user.id,
+          title,
+          originalFilename: file.name,
+          fileType: "pdf",
+          rawText,
+          status: "ready",
+        });
+
+        revalidateTag(TAGS.documents(session.user.id), "");
+        revalidateTag(TAGS.dashboard(session.user.id), "");
+        return NextResponse.json(
+          { message: "Document uploaded successfully", document: doc },
+          { status: 201 }
+        );
       }
 
-      const rawText = await extractTextFromPDF(buffer);
+      if (isImage) {
+        const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+        const mediaType = file.type as "image/jpeg" | "image/png" | "image/webp";
 
-      if (!rawText || rawText.trim().length === 0) {
-        return NextResponse.json({ error: "Could not extract text from PDF" }, { status: 400 });
+        const visionResponse = await client.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4096,
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: { type: "base64", media_type: mediaType, data: base64 },
+              },
+              {
+                type: "text",
+                text: "Extract all text from this image. If it contains handwritten notes, diagrams with labels, or printed text, transcribe everything accurately. Return only the extracted text, no commentary.",
+              },
+            ],
+          }],
+        });
+
+        const textBlock = visionResponse.content.find(b => b.type === "text");
+        rawText = textBlock?.type === "text" ? textBlock.text : "";
+
+        if (!rawText.trim()) {
+          return NextResponse.json({ error: "Could not extract text from image" }, { status: 400 });
+        }
+
+        const title = formData.get("title") as string || file.name.replace(/\.[^.]+$/, "");
+        const doc = await Document.create({
+          userId: session.user.id, title,
+          originalFilename: file.name, fileType: "image",
+          rawText, status: "ready",
+        });
+        revalidateTag(TAGS.documents(session.user.id), "");
+        revalidateTag(TAGS.dashboard(session.user.id), "");
+        return NextResponse.json({ message: "Image processed successfully", document: doc }, { status: 201 });
       }
-
-      const title = formData.get("title") as string || file.name.replace(".pdf", "");
-
-      const doc = await Document.create({
-        userId: session.user.id,
-        title,
-        originalFilename: file.name,
-        fileType: "pdf",
-        rawText,
-        status: "ready",
-      });
-
-      revalidateTag(TAGS.documents(session.user.id), "");
-      revalidateTag(TAGS.dashboard(session.user.id), "");
-      return NextResponse.json(
-        { message: "Document uploaded successfully", document: doc },
-        { status: 201 }
-      );
     } else {
       // Text paste
       const { title, content } = await request.json();

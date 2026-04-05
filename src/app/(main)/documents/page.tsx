@@ -2,10 +2,19 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { FileText, FileType, Upload, Search, ArrowRight } from "lucide-react";
+import { FileText, FileType, Upload, Search, ArrowRight, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import TextShimmer from "@/components/ui/text-shimmer";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface DocumentData {
   _id: string;
@@ -52,7 +61,7 @@ function RowSkeleton() {
   );
 }
 
-function DocRow({ doc, index }: { doc: DocumentData; index: number }) {
+function DocRow({ doc, index, onDelete }: { doc: DocumentData; index: number; onDelete: (id: string) => void }) {
   const isPDF = doc.fileType === "pdf";
   const date = new Date(doc.uploadedAt).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
@@ -63,8 +72,9 @@ function DocRow({ doc, index }: { doc: DocumentData; index: number }) {
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className="relative group/row"
     >
-      <Link href={`/documents/${doc._id}`} className="group flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-muted/40 transition-all duration-150 relative">
+      <Link href={`/documents/${doc._id}`} className="group flex items-center gap-4 px-4 py-3 pr-12 rounded-xl hover:bg-muted/40 transition-all duration-150 relative">
         {/* Left accent bar */}
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-0 group-hover:h-[55%] rounded-r-full bg-gradient-to-b from-amber-400 to-orange-500 transition-all duration-200" />
 
@@ -109,6 +119,15 @@ function DocRow({ doc, index }: { doc: DocumentData; index: number }) {
           <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/25 group-hover:text-amber-500/60 group-hover:translate-x-0.5 transition-all duration-150" />
         </div>
       </Link>
+
+      {/* Delete button — outside Link so it doesn't navigate */}
+      <button
+        onClick={() => onDelete(doc._id)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 rounded-lg border border-transparent text-muted-foreground/0 group-hover/row:border-border/50 group-hover/row:text-muted-foreground/40 hover:!border-red-500/40 hover:!bg-red-500/8 hover:!text-red-500 transition-all duration-150 z-10"
+        aria-label="Delete document"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
     </motion.div>
   );
 }
@@ -117,6 +136,8 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetch("/api/documents")
@@ -124,6 +145,26 @@ export default function DocumentsPage() {
       .then((data) => setDocuments(Array.isArray(data) ? data : []))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/documents/${deleteId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete document");
+        return;
+      }
+      setDocuments(prev => prev.filter(d => d._id !== deleteId));
+      toast.success("Document deleted");
+    } catch {
+      toast.error("Failed to delete document");
+    } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!query.trim()) return documents;
@@ -133,7 +174,46 @@ export default function DocumentsPage() {
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
 
+  const deleteTitle = documents.find(d => d._id === deleteId)?.title;
+
   return (
+    <>
+    <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open && !deleting) setDeleteId(null); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete document?</DialogTitle>
+          <DialogDescription>
+            <span className="font-medium text-foreground">&ldquo;{deleteTitle}&rdquo;</span> and any study packs generated from it will be permanently deleted. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <button
+            onClick={() => setDeleteId(null)}
+            disabled={deleting}
+            className="rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 transition-colors disabled:opacity-60 flex items-center gap-2"
+          >
+            {deleting ? (
+              <>
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                Deleting…
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </>
+            )}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     <div className="space-y-5 max-w-3xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -220,7 +300,7 @@ export default function DocumentsPage() {
                 {/* Rows */}
                 <div className="rounded-2xl border border-border/50 bg-card overflow-hidden divide-y divide-border/30">
                   {group.docs.map((doc, i) => (
-                    <DocRow key={doc._id} doc={doc} index={i} />
+                    <DocRow key={doc._id} doc={doc} index={i} onDelete={setDeleteId} />
                   ))}
                 </div>
               </div>
@@ -229,5 +309,6 @@ export default function DocumentsPage() {
         </AnimatePresence>
       )}
     </div>
+    </>
   );
 }

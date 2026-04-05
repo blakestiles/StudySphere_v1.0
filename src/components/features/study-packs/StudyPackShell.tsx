@@ -2,12 +2,22 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   BookOpen, Search, ArrowRight, FileText,
-  Layers, Brain, CheckCircle, Upload
+  Layers, Brain, CheckCircle, Upload, Globe, Trash2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface StudyPackItem {
   id: string;
@@ -15,12 +25,14 @@ interface StudyPackItem {
   status: string;
   docTitle: string;
   createdAt: string;
+  isPublic: boolean;
 }
 
 // ── Featured (hero) card ───────────────────────────────────
-function FeaturedCard({ pack }: { pack: StudyPackItem }) {
+function FeaturedCard({ pack, onPublishToggle, onDelete }: { pack: StudyPackItem; onPublishToggle: (id: string) => void; onDelete: (id: string) => void }) {
   return (
-    <Link href={`/study-packs/${pack.id}`} className="block group">
+    <div className="relative group">
+      <Link href={`/study-packs/${pack.id}`} className="block">
       <div className="relative rounded-2xl border border-amber-500/20 bg-card overflow-hidden transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_12px_40px_oklch(0_0_0_/_22%),0_0_0_1px_oklch(0.76_0.17_62_/_12%)]">
 
         {/* Gradient wash */}
@@ -85,17 +97,40 @@ function FeaturedCard({ pack }: { pack: StudyPackItem }) {
           </div>
         </div>
       </div>
-    </Link>
+      </Link>
+      {/* Publish toggle + Delete — outside Link so they don't navigate */}
+      <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10">
+        <button
+          onClick={() => onPublishToggle(pack.id)}
+          className={`flex items-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1 border transition-all duration-200 ${
+            pack.isPublic
+              ? "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
+              : "text-muted-foreground border-border/60 bg-card hover:border-amber-500/30 hover:text-amber-600 dark:hover:text-amber-400"
+          }`}
+        >
+          <Globe className="w-3 h-3" />
+          {pack.isPublic ? "Published" : "Publish"}
+        </button>
+        <button
+          onClick={() => onDelete(pack.id)}
+          className="flex items-center justify-center w-7 h-7 rounded-lg border border-border/60 bg-card text-muted-foreground hover:border-red-500/40 hover:bg-red-500/8 hover:text-red-500 transition-all duration-200"
+          aria-label="Delete pack"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
   );
 }
 
 // ── Standard card ──────────────────────────────────────────
-function PackCard({ pack, index }: { pack: StudyPackItem; index: number }) {
+function PackCard({ pack, index, onPublishToggle, onDelete }: { pack: StudyPackItem; index: number; onPublishToggle: (id: string) => void; onDelete: (id: string) => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       transition={{ delay: index * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="relative"
     >
       <Link href={`/study-packs/${pack.id}`} className="block group h-full">
         <div className="relative h-full rounded-2xl border border-border/50 bg-card overflow-hidden transition-all duration-300 hover:border-amber-500/25 hover:shadow-[0_6px_24px_oklch(0_0_0_/_18%),0_0_0_1px_oklch(0.76_0.17_62_/_8%)]">
@@ -154,13 +189,79 @@ function PackCard({ pack, index }: { pack: StudyPackItem; index: number }) {
           </div>
         </div>
       </Link>
+      {/* Publish toggle + Delete — outside Link so they don't navigate */}
+      <div className="absolute bottom-3 left-4 flex items-center gap-1.5 z-10">
+        <button
+          onClick={() => onPublishToggle(pack.id)}
+          className={`flex items-center gap-1 text-[10px] font-medium rounded-lg px-1.5 py-0.5 border transition-all duration-200 ${
+            pack.isPublic
+              ? "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
+              : "text-muted-foreground/50 border-border/40 bg-transparent hover:border-amber-500/30 hover:text-amber-600 dark:hover:text-amber-400"
+          }`}
+        >
+          <Globe className="w-2.5 h-2.5" />
+          {pack.isPublic ? "Published" : "Publish"}
+        </button>
+        <button
+          onClick={() => onDelete(pack.id)}
+          className="flex items-center justify-center w-5 h-5 rounded-md border border-border/40 bg-transparent text-muted-foreground/40 hover:border-red-500/40 hover:bg-red-500/8 hover:text-red-500 transition-all duration-200"
+          aria-label="Delete pack"
+        >
+          <Trash2 className="w-2.5 h-2.5" />
+        </button>
+      </div>
     </motion.div>
   );
 }
 
 // ── Main shell ─────────────────────────────────────────────
-export default function StudyPackShell({ packs }: { packs: StudyPackItem[] }) {
+export default function StudyPackShell({ packs: initialPacks }: { packs: StudyPackItem[] }) {
+  const [packs, setPacks] = useState<StudyPackItem[]>(initialPacks);
   const [query, setQuery] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+
+  const handlePublishToggle = async (id: string) => {
+    // Optimistic update
+    setPacks(prev => prev.map(p => p.id === id ? { ...p, isPublic: !p.isPublic } : p));
+    try {
+      const res = await fetch(`/api/study-packs/${id}/publish`, { method: "PATCH" });
+      const data = await res.json();
+      if (!res.ok) {
+        // Revert on error
+        setPacks(prev => prev.map(p => p.id === id ? { ...p, isPublic: !p.isPublic } : p));
+        toast.error(data.error || "Failed to update visibility");
+        return;
+      }
+      setPacks(prev => prev.map(p => p.id === id ? { ...p, isPublic: data.isPublic } : p));
+      toast.success(data.isPublic ? "Pack published to marketplace" : "Pack unpublished");
+    } catch {
+      setPacks(prev => prev.map(p => p.id === id ? { ...p, isPublic: !p.isPublic } : p));
+      toast.error("Failed to update visibility");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/study-packs/${deleteId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete study pack");
+        return;
+      }
+      setPacks(prev => prev.filter(p => p.id !== deleteId));
+      toast.success("Study pack deleted");
+      router.refresh();
+    } catch {
+      toast.error("Failed to delete study pack");
+    } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!query.trim()) return packs;
@@ -199,7 +300,46 @@ export default function StudyPackShell({ packs }: { packs: StudyPackItem[] }) {
     );
   }
 
+  const deleteTitle = packs.find(p => p.id === deleteId)?.title;
+
   return (
+    <>
+    <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open && !deleting) setDeleteId(null); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete study pack?</DialogTitle>
+          <DialogDescription>
+            <span className="font-medium text-foreground">&ldquo;{deleteTitle}&rdquo;</span> and all its flashcards, quizzes, and topics will be permanently deleted. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <button
+            onClick={() => setDeleteId(null)}
+            disabled={deleting}
+            className="rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 transition-colors disabled:opacity-60 flex items-center gap-2"
+          >
+            {deleting ? (
+              <>
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                Deleting…
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </>
+            )}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     <div className="space-y-5">
       {/* Stats + Search row */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -256,7 +396,7 @@ export default function StudyPackShell({ packs }: { packs: StudyPackItem[] }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               >
-                <FeaturedCard pack={featured} />
+                <FeaturedCard pack={featured} onPublishToggle={handlePublishToggle} onDelete={setDeleteId} />
               </motion.div>
             )}
 
@@ -264,7 +404,7 @@ export default function StudyPackShell({ packs }: { packs: StudyPackItem[] }) {
             {rest.length > 0 && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {rest.map((pack, i) => (
-                  <PackCard key={pack.id} pack={pack} index={i} />
+                  <PackCard key={pack.id} pack={pack} index={i} onPublishToggle={handlePublishToggle} onDelete={setDeleteId} />
                 ))}
               </div>
             )}
@@ -272,5 +412,6 @@ export default function StudyPackShell({ packs }: { packs: StudyPackItem[] }) {
         </AnimatePresence>
       )}
     </div>
+    </>
   );
 }

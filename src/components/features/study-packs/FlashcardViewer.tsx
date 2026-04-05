@@ -2,13 +2,15 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react";
+import { Volume2, VolumeX, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import MathText from "@/components/ui/math-text";
 interface Flashcard {
   _id: string;
   question: string;
   answer: string;
   difficulty: "easy" | "medium" | "hard";
+  sourcePage?: number | null;
   topicId?: string;
   easeFactor?: number;
   intervalDays?: number;
@@ -264,8 +266,14 @@ export default function FlashcardViewer({ flashcards: initialFlashcards }: Flash
                 Question
               </span>
               <p className="text-lg font-medium text-foreground leading-relaxed max-w-lg">
-                {card.question}
+                <MathText text={card.question} />
               </p>
+              {card.sourcePage && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 mt-2">
+                  <BookOpen className="h-3 w-3" />
+                  p. {card.sourcePage}
+                </span>
+              )}
               <span className="text-xs text-muted-foreground mt-6 opacity-60">
                 Click to reveal
               </span>
@@ -283,8 +291,14 @@ export default function FlashcardViewer({ flashcards: initialFlashcards }: Flash
                 Answer
               </span>
               <p className="text-lg text-foreground leading-relaxed max-w-lg">
-                {card.answer}
+                <MathText text={card.answer} />
               </p>
+              {card.sourcePage && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 mt-2">
+                  <BookOpen className="h-3 w-3" />
+                  p. {card.sourcePage}
+                </span>
+              )}
               <span className="text-xs text-muted-foreground mt-6 opacity-60">
                 Click to flip back
               </span>

@@ -5,14 +5,16 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   CalendarDays, Clock, Leaf, Scale, Flame, Sunrise, Sun, Moon,
-  Sparkles, Zap, Check, Loader2, BookOpen, PenLine, CalendarCheck2,
+  Sparkles, Zap, Check, Loader2, BookOpen, PenLine, CalendarCheck2, Calendar,
 } from "lucide-react";
+import { format } from "date-fns";
 import CustomSelect from "@/components/ui/custom-select";
 import DatePicker from "@/components/ui/date-picker";
 
 interface StudyPackOption {
   _id: string;
   title: string;
+  examDate?: string | null;
 }
 
 interface StudyPlanGeneratorProps {
@@ -118,10 +120,17 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
   const [result, setResult] = useState<{ count: number } | null>(null);
 
   function togglePack(id: string) {
+    const pack = studyPacks.find((sp) => sp._id === id);
     setSelectedPacks((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        if (pack?.examDate && !targetDate) {
+          setTargetDate(new Date(pack.examDate).toISOString().split("T")[0]);
+        }
+      }
       return next;
     });
   }
@@ -323,7 +332,13 @@ export default function StudyPlanGenerator({ studyPacks }: StudyPlanGeneratorPro
                 }`}>
                   {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
                 </div>
-                <span className="text-[12.5px] font-medium text-foreground/80 truncate">{sp.title}</span>
+                <span className="text-[12.5px] font-medium text-foreground/80 truncate flex-1">{sp.title}</span>
+                {sp.examDate && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 shrink-0">
+                    <Calendar className="h-2.5 w-2.5" />
+                    {format(new Date(sp.examDate), "MMM d")}
+                  </span>
+                )}
               </button>
             );
           })}

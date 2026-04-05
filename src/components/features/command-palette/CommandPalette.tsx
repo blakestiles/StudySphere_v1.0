@@ -9,7 +9,7 @@ import {
   CalendarDays, BarChart3, PenLine, Bot, CalendarCheck2,
   Network, ClipboardCheck, NotebookPen, Trophy, Headphones,
   TrendingUp, History, User, Search, ArrowRight, Clock,
-  Zap, Flame,
+  Zap, Flame, ScrollText, Calculator, Store,
 } from "lucide-react";
 
 // ── Page registry ──────────────────────────────────────────────────────────────
@@ -38,30 +38,35 @@ const PAGES: Page[] = [
   { name: "Profile",        href: "/profile",         icon: <User            className="h-4 w-4" />, description: "Account settings and achievements",    group: "core" },
 
   // study
-  { name: "Upload",         href: "/upload",          icon: <Upload          className="h-4 w-4" />, description: "Upload a PDF or paste text",           group: "study" },
-  { name: "Focus Mode",     href: "/focus",           icon: <Target          className="h-4 w-4" />, description: "Pomodoro timer with goal tracking",    group: "study" },
-  { name: "Exam Simulator", href: "/exam-simulator",  icon: <ClipboardCheck  className="h-4 w-4" />, description: "Proctored AI-generated exams",         group: "study" },
-  { name: "Audio Study",    href: "/audio-study",     icon: <Headphones      className="h-4 w-4" />, description: "Listen to your study material",        group: "study" },
-  { name: "Notebooks",      href: "/notebooks",       icon: <NotebookPen     className="h-4 w-4" />, description: "Cornell-style notes with rich text",   group: "study" },
-  { name: "Practice Essay", href: "/practice-essay",  icon: <PenLine         className="h-4 w-4" />, description: "Write essays with AI grading",         group: "study" },
-  { name: "Goals",          href: "/goals",           icon: <Trophy          className="h-4 w-4" />, description: "Set targets and track milestones",     group: "study" },
+  { name: "Upload",           href: "/upload",          icon: <Upload          className="h-4 w-4" />, description: "Upload a PDF or paste text",                  group: "study" },
+  { name: "Focus Mode",       href: "/focus",           icon: <Target          className="h-4 w-4" />, description: "Pomodoro timer with goal tracking",           group: "study" },
+  { name: "Exam Simulator",   href: "/exam-simulator",  icon: <ClipboardCheck  className="h-4 w-4" />, description: "Proctored AI-generated exams",                group: "study" },
+  { name: "Audio Study",      href: "/audio-study",     icon: <Headphones      className="h-4 w-4" />, description: "Listen to your study material",               group: "study" },
+  { name: "Notebooks",        href: "/notebooks",       icon: <NotebookPen     className="h-4 w-4" />, description: "Cornell-style notes with rich text",          group: "study" },
+  { name: "Practice Essay",   href: "/practice-essay",  icon: <PenLine         className="h-4 w-4" />, description: "Write essays with AI grading",                group: "study" },
+  { name: "Goals",            href: "/goals",           icon: <Trophy          className="h-4 w-4" />, description: "Set targets and track milestones",            group: "study" },
+  { name: "Cheat Sheets",     href: "/cheat-sheets",    icon: <ScrollText      className="h-4 w-4" />, description: "Generate condensed exam cheat sheets",        group: "study", keywords: "cheat sheet exam notes summary" },
+  { name: "Grade Calculator", href: "/grade-calculator",icon: <Calculator      className="h-4 w-4" />, description: "What-if calculator for your target grade",    group: "study", keywords: "grade gpa score final calculator what if" },
 
   // ai
-  { name: "AI Tutor",       href: "/chat",            icon: <Bot             className="h-4 w-4" />, description: "Ask anything about your material",     group: "ai" },
-  { name: "Study Plan",     href: "/study-plan",      icon: <CalendarCheck2  className="h-4 w-4" />, description: "AI-generated personalised schedule",   group: "ai" },
-  { name: "Knowledge Graph",href: "/knowledge-graph", icon: <Network         className="h-4 w-4" />, description: "Topic connections across all packs",   group: "ai" },
+  { name: "AI Tutor",         href: "/chat",            icon: <Bot             className="h-4 w-4" />, description: "Ask anything about your material",            group: "ai" },
+  { name: "Study Plan",       href: "/study-plan",      icon: <CalendarCheck2  className="h-4 w-4" />, description: "AI-generated personalised schedule",          group: "ai" },
+  { name: "Knowledge Graph",  href: "/knowledge-graph", icon: <Network         className="h-4 w-4" />, description: "Topic connections across all packs",          group: "ai" },
 
   // reports
-  { name: "Analytics",      href: "/analytics",       icon: <BarChart3       className="h-4 w-4" />, description: "Study streaks, scores, and trends",    group: "reports" },
-  { name: "Calendar",       href: "/calendar",        icon: <CalendarDays    className="h-4 w-4" />, description: "Study events and schedule",            group: "reports" },
-  { name: "History",        href: "/history",         icon: <History         className="h-4 w-4" />, description: "Past quizzes, essays, and sessions",   group: "reports" },
-  { name: "Weekly Report",  href: "/weekly-report",   icon: <TrendingUp      className="h-4 w-4" />, description: "AI performance analysis for the week", group: "reports" },
+  { name: "Analytics",        href: "/analytics",       icon: <BarChart3       className="h-4 w-4" />, description: "Study streaks, scores, and trends",           group: "reports" },
+  { name: "Calendar",         href: "/calendar",        icon: <CalendarDays    className="h-4 w-4" />, description: "Study events and schedule",                   group: "reports" },
+  { name: "History",          href: "/history",         icon: <History         className="h-4 w-4" />, description: "Past quizzes, essays, and sessions",          group: "reports" },
+  { name: "Weekly Report",    href: "/weekly-report",   icon: <TrendingUp      className="h-4 w-4" />, description: "AI performance analysis for the week",        group: "reports" },
+  { name: "Study Exchange",   href: "/marketplace",     icon: <Store           className="h-4 w-4" />, description: "Share and discover study packs",              group: "reports", keywords: "marketplace share packs community" },
 ];
 
 const QUICK_ACTIONS = [
-  { name: "Upload document",    href: "/upload",       icon: <Upload       className="h-3.5 w-3.5" />, label: "Upload" },
-  { name: "Start focus session",href: "/focus",        icon: <Flame        className="h-3.5 w-3.5" />, label: "Focus" },
-  { name: "Generate study plan",href: "/study-plan",   icon: <Zap          className="h-3.5 w-3.5" />, label: "Plan" },
+  { name: "Upload document",    href: "/upload",          icon: <Upload       className="h-3.5 w-3.5" />, label: "Upload" },
+  { name: "Start focus session",href: "/focus",           icon: <Flame        className="h-3.5 w-3.5" />, label: "Focus" },
+  { name: "Generate study plan",href: "/study-plan",      icon: <Zap          className="h-3.5 w-3.5" />, label: "Plan" },
+  { name: "Cheat sheets",       href: "/cheat-sheets",    icon: <ScrollText   className="h-3.5 w-3.5" />, label: "Cheat Sheet" },
+  { name: "Grade calculator",   href: "/grade-calculator",icon: <Calculator   className="h-3.5 w-3.5" />, label: "Grades" },
 ];
 
 const RECENT_KEY = "ss:recent-pages";
@@ -250,12 +255,6 @@ export default function CommandPalette() {
                         {a.label}
                       </button>
                     ))}
-                  </div>
-                  <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/40">
-                    <kbd className="rounded border border-border/50 bg-muted/40 px-1 py-0.5">↑↓</kbd>
-                    <span>navigate</span>
-                    <kbd className="ml-1 rounded border border-border/50 bg-muted/40 px-1 py-0.5">↵</kbd>
-                    <span>open</span>
                   </div>
                 </div>
               </Command>

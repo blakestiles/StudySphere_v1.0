@@ -25,7 +25,7 @@ import {
 interface SerializedDocument {
   _id: string;
   title: string;
-  fileType: "pdf" | "text";
+  fileType: "pdf" | "text" | "image" | "url" | "notion" | "gdocs";
   status: "processing" | "ready" | "error";
   uploadedAt: string;
 }

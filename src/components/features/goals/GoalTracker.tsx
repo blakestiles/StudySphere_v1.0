@@ -10,6 +10,9 @@ import { differenceInDays } from "date-fns";
 import CustomSelect from "@/components/ui/custom-select";
 import DatePicker from "@/components/ui/date-picker";
 import { toast } from "sonner";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Goal {
   _id: string;
@@ -238,6 +241,8 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [suggestingId, setSuggestingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [targetType, setTargetType] = useState("flashcards_reviewed");
@@ -296,14 +301,18 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
     }
   };
 
-  const deleteGoal = async (id: string) => {
-    if (!confirm("Delete this goal?")) return;
+  const deleteGoal = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
     try {
-      await fetch(`/api/goals/${id}`, { method: "DELETE" });
-      setGoals((prev) => prev.filter((g) => g._id !== id));
+      await fetch(`/api/goals/${deleteId}`, { method: "DELETE" });
+      setGoals((prev) => prev.filter((g) => g._id !== deleteId));
       toast.success("Goal deleted");
+      setDeleteId(null);
     } catch {
       toast.error("Failed to delete goal");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -347,8 +356,10 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
     suggestingId,
     onGetAiTip: getAiSuggestion,
     onUpdateStatus: updateStatus,
-    onDelete: deleteGoal,
+    onDelete: setDeleteId,
   };
+
+  const deleteTarget = goals.find((g) => g._id === deleteId);
 
   return (
     <div className="space-y-5">
@@ -519,6 +530,38 @@ export default function GoalTracker({ goals: initial }: GoalTrackerProps) {
           </div>
         </div>
       )}
+
+      {/* ── Delete confirmation dialog ──────────────────── */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete goal?</DialogTitle>
+            <DialogDescription>
+              {deleteTarget && (
+                <>
+                  <span className="font-medium text-foreground">&ldquo;{deleteTarget.title}&rdquo;</span> will be permanently deleted. This cannot be undone.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => setDeleteId(null)}
+              className="rounded-xl border border-border/60 bg-card px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={deleteGoal}
+              disabled={deleting}
+              className="flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+            >
+              {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

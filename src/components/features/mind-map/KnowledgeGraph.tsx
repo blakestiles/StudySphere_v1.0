@@ -3,30 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Brain, BookOpen, Network, Link2, Download, Search, X, ZoomIn, ZoomOut, Maximize2, Loader2, GraduationCap, TrendingUp, Unlink, ArrowRight } from "lucide-react";
+import { TopicNode, Edge, bfsShortestPath, getSharedKeywords, isGapNode, getClusterName, computeDecayAlpha } from "./graph-algorithms";
+import { useGraphLayout } from "./useGraphLayout";
 
 // ── Types ──────────────────────────────────────────────
-
-interface TopicNode {
-  id: string;
-  name: string;
-  packId: string;
-  packTitle: string;
-  content: string;
-  flashcardCount: number;
-  quizCount: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-}
-
-interface Edge {
-  source: string;
-  target: string;
-  type: "same-pack" | "cross-pack";
-  strength: number; // 0-1 for cross-pack similarity
-}
 
 interface Particle {
   x: number;
@@ -42,6 +22,20 @@ const PACK_COLORS = [
   "#60a5fa", "#4ade80", "#c084fc", "#fb923c", "#f472b6",
   "#38bdf8", "#a3e635", "#e879f9", "#fbbf24", "#f87171",
 ];
+
+const PHYSICS = {
+  repulsion: 12_000,
+  gravityStrength: 0.0003,
+  samePackTarget: 180,
+  crossPackTarget: 300,
+  samePackSpring: 0.006,
+  crossPackSpring: 0.0015,
+  dampen: 0.9,
+  jitter: 0.15,
+  alphaDecay: 0.997,
+  alphaMin: 0.08,
+  alphaInitial: 0.5,
+} as const;
 
 // ── Word-based similarity for cross-pack matching ──────
 
@@ -108,6 +102,12 @@ export default function KnowledgeGraph() {
   const masteryModeRef = useRef(false);
   const packMasteryRef = useRef<Record<string, { avg: number; attempted: boolean }>>({});
 
+  // Time-decay fade
+  const [decayMode, setDecayMode] = useState(false);
+  const decayModeRef = useRef(false);
+  const packLastActivityRef = useRef<Record<string, number | null>>({});
+
+
   // Graph insights (computed after load)
   const [graphInsights, setGraphInsights] = useState<{
     topNode: TopicNode | null;
@@ -131,11 +131,27 @@ export default function KnowledgeGraph() {
   const lastMouse = useRef({ x: 0, y: 0 });
   const dragNode = useRef<TopicNode | null>(null);
   const hoveredNode = useRef<TopicNode | null>(null);
+  const hoveredEdge = useRef<Edge | null>(null);
   const selectedNodeRef = useRef<TopicNode | null>(null);
   const tickCount = useRef(0);
   const sizeRef = useRef({ w: 1000, h: 650 });
   const nodeIndexMapRef = useRef<Map<string, number>>(new Map());
   const nodeMapRef = useRef<Map<string, TopicNode>>(new Map());
+  const directedEdgeMapRef = useRef<Map<string, "forward" | "backward" | "both">>(new Map());
+  const minimapCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isDarkRef = useRef(document.documentElement.classList.contains("dark"));
+  const edgeKeywordsCacheRef = useRef<Map<string, string[]>>(new Map());
+  const clusterNamesRef = useRef<Map<string, string>>(new Map());
+  const historyDataRef = useRef<any[] | null>(null);
+
+  // Path finder state
+  const [pathMode, setPathMode] = useState(false);
+  const pathNodesRef = useRef<Set<string>>(new Set());
+  const pathEdgesRef = useRef<Set<string>>(new Set());
+  const pathStartRef = useRef<TopicNode | null>(null);
+  const [pathStart, setPathStart] = useState<TopicNode | null>(null);
+  const [pathEnd, setPathEnd] = useState<TopicNode | null>(null);
+  const pathModeRef = useRef(false);
 
   // Filter/search refs for render loop access
   const hiddenPacksRef = useRef<Set<string>>(new Set());
@@ -144,12 +160,15 @@ export default function KnowledgeGraph() {
   const focusSetRef = useRef<Set<string> | null>(null);
 
   const router = useRouter();
+  const { loadLayout, saveLayout } = useGraphLayout("kg-layout-v1");
 
   // Sync state to refs
   useEffect(() => { hiddenPacksRef.current = hiddenPacks; }, [hiddenPacks]);
   useEffect(() => { searchQueryRef.current = searchQuery.toLowerCase(); }, [searchQuery]);
   useEffect(() => { masteryModeRef.current = masteryMode; }, [masteryMode]);
+  useEffect(() => { pathModeRef.current = pathMode; }, [pathMode]);
   useEffect(() => { packMasteryRef.current = packMastery; }, [packMastery]);
+  useEffect(() => { decayModeRef.current = decayMode; }, [decayMode]);
   useEffect(() => {
     focusHopsRef.current = focusHops;
     if (focusHops > 0 && selectedNodeRef.current) {
@@ -159,17 +178,25 @@ export default function KnowledgeGraph() {
     }
   }, [focusHops, selectedNode]);
 
+  useEffect(() => {
+    const obs = new MutationObserver(() => {
+      isDarkRef.current = document.documentElement.classList.contains("dark");
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
   // ── Fetch Data ───────────────────────────────────────
 
   useEffect(() => {
     async function fetchData() {
+      let allTopics: TopicNode[] = [];
       try {
         const res = await fetch("/api/study-packs");
         if (!res.ok) return;
         const data = await res.json();
         const packs = Array.isArray(data) ? data : data.studyPacks || [];
 
-        const allTopics: TopicNode[] = [];
         const allEdges: Edge[] = [];
         const colorMap: Record<string, string> = {};
         const nameMap: Record<string, string> = {};
@@ -250,6 +277,46 @@ export default function KnowledgeGraph() {
         nodeIndexMapRef.current = new Map(allTopics.map((n, i) => [n.id, i]));
         edgesRef.current = allEdges;
 
+        // Cache edge keywords (computed once, used in draw)
+        const kwCache = new Map<string, string[]>();
+        const nodeMapForCache = new Map(allTopics.map(n => [n.id, n]));
+        for (const e of allEdges) {
+          if (e.type !== "cross-pack") continue;
+          const s = nodeMapForCache.get(e.source);
+          const t = nodeMapForCache.get(e.target);
+          if (s && t) kwCache.set(`${e.source}->${e.target}`, getSharedKeywords(s, t, 3));
+        }
+        edgeKeywordsCacheRef.current = kwCache;
+
+        // Cache cluster names (computed once, used in draw)
+        const packGroupsForNames = new Map<string, TopicNode[]>();
+        for (const n of allTopics) {
+          if (!packGroupsForNames.has(n.packId)) packGroupsForNames.set(n.packId, []);
+          packGroupsForNames.get(n.packId)!.push(n);
+        }
+        const nameCache = new Map<string, string>();
+        for (const [packId, nodes] of packGroupsForNames) {
+          nameCache.set(packId, getClusterName(nodes));
+        }
+        clusterNamesRef.current = nameCache;
+
+        // Compute directed edges based on name-in-content reference
+        const dMap = new Map<string, "forward" | "backward" | "both">();
+        for (const e of allEdges) {
+          if (e.type !== "cross-pack") continue;
+          const srcN = nodeMapRef.current.get(e.source);
+          const tgtN = nodeMapRef.current.get(e.target);
+          if (!srcN || !tgtN) continue;
+          const srcNameLow = srcN.name.toLowerCase();
+          const tgtNameLow = tgtN.name.toLowerCase();
+          const srcInTgtContent = tgtN.content.toLowerCase().includes(srcNameLow) && srcNameLow.length > 5;
+          const tgtInSrcContent = srcN.content.toLowerCase().includes(tgtNameLow) && tgtNameLow.length > 5;
+          if (srcInTgtContent && tgtInSrcContent) dMap.set(`${e.source}->${e.target}`, "both");
+          else if (srcInTgtContent) dMap.set(`${e.source}->${e.target}`, "forward");
+          else if (tgtInSrcContent) dMap.set(`${e.source}->${e.target}`, "backward");
+        }
+        directedEdgeMapRef.current = dMap;
+
         // Compute graph insights
         if (allTopics.length > 0) {
           const degree: Record<string, number> = {};
@@ -275,11 +342,20 @@ export default function KnowledgeGraph() {
       } catch {
         // silent
       } finally {
+        loadLayout(allTopics);
         setLoading(false);
       }
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      if (nodesRef.current.length > 0) saveLayout(nodesRef.current);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [loading, saveLayout]);
 
   // ── Screen → World coordinates ───────────────────────
 
@@ -350,6 +426,34 @@ export default function KnowledgeGraph() {
     hoveredNode.current = findNodeAt(w.x, w.y);
     const canvas = canvasRef.current;
     if (canvas) canvas.style.cursor = hoveredNode.current ? "pointer" : "grab";
+
+    // Edge hover detection (only when not hovering a node)
+    if (!hoveredNode.current) {
+      let closestEdge: Edge | null = null;
+      let closestDist = 12;
+      const nodeMap = nodeMapRef.current;
+      for (const e of edgesRef.current) {
+        if (e.type !== "cross-pack") continue;
+        const src = nodeMap.get(e.source);
+        const tgt = nodeMap.get(e.target);
+        if (!src || !tgt) continue;
+        const dx = tgt.x - src.x;
+        const dy = tgt.y - src.y;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) continue;
+        const t = Math.max(0, Math.min(1, ((w.x - src.x) * dx + (w.y - src.y) * dy) / lenSq));
+        const px = src.x + t * dx - w.x;
+        const py = src.y + t * dy - w.y;
+        const dist = Math.sqrt(px * px + py * py);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestEdge = e;
+        }
+      }
+      hoveredEdge.current = closestEdge;
+    } else {
+      hoveredEdge.current = null;
+    }
   }, [screenToWorld, findNodeAt]);
 
   const handleMouseUp = useCallback(() => {
@@ -358,6 +462,33 @@ export default function KnowledgeGraph() {
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
+    if (pathModeRef.current) {
+      const w2 = screenToWorld(e.clientX, e.clientY);
+      const node = findNodeAt(w2.x, w2.y);
+      if (node) {
+        if (!pathStartRef.current) {
+          pathStartRef.current = node;
+          setPathStart(node);
+        } else if (pathStartRef.current.id !== node.id) {
+          const path = bfsShortestPath(pathStartRef.current.id, node.id, edgesRef.current);
+          if (path) {
+            pathNodesRef.current = new Set(path);
+            const edgeKeys = new Set<string>();
+            for (let i = 0; i < path.length - 1; i++) {
+              edgeKeys.add(`${path[i]}->${path[i+1]}`);
+              edgeKeys.add(`${path[i+1]}->${path[i]}`);
+            }
+            pathEdgesRef.current = edgeKeys;
+          } else {
+            pathNodesRef.current = new Set();
+            pathEdgesRef.current = new Set();
+          }
+          setPathEnd(node);
+        }
+      }
+      return;
+    }
+
     const w = screenToWorld(e.clientX, e.clientY);
     const node = findNodeAt(w.x, w.y);
     if (node) {
@@ -411,43 +542,83 @@ export default function KnowledgeGraph() {
     if (node) router.push(`/study-packs/${node.packId}`);
   }, [screenToWorld, findNodeAt, router]);
 
+  const clearPath = useCallback(() => {
+    setPathMode(false);
+    pathModeRef.current = false;
+    pathStartRef.current = null;
+    pathNodesRef.current = new Set();
+    pathEdgesRef.current = new Set();
+    setPathStart(null);
+    setPathEnd(null);
+  }, []);
+
   // ── Mastery Overlay ───────────────────────────────────
+
+  const fetchHistory = useCallback(async (): Promise<any[]> => {
+    if (historyDataRef.current !== null) return historyDataRef.current;
+    try {
+      const res = await fetch("/api/history");
+      if (res.ok) {
+        historyDataRef.current = await res.json();
+      } else {
+        historyDataRef.current = [];
+      }
+    } catch {
+      historyDataRef.current = [];
+    }
+    return historyDataRef.current!;
+  }, []);
 
   const toggleMasteryMode = useCallback(async () => {
     const turningOn = !masteryMode;
     if (turningOn && Object.keys(packMastery).length === 0) {
       setMasteryLoading(true);
-      try {
-        const res = await fetch("/api/history");
-        if (res.ok) {
-          const activities = await res.json();
-          const quizActivities = (activities as any[]).filter((a) => a.type === "quiz");
-          const byPack: Record<string, number[]> = {};
-          for (const q of quizActivities) {
-            const packId = q.packId as string | undefined;
-            if (!packId) continue;
-            const pct = q.totalQuestions > 0 ? (q.score / q.totalQuestions) * 100 : 0;
-            if (!byPack[packId]) byPack[packId] = [];
-            byPack[packId].push(pct);
-          }
-          const mastery: Record<string, { avg: number; attempted: boolean }> = {};
-          for (const packId of Object.keys(packNamesRef.current)) {
-            if (byPack[packId]?.length > 0) {
-              const avg = byPack[packId].reduce((a, b) => a + b, 0) / byPack[packId].length;
-              mastery[packId] = { avg, attempted: true };
-            } else {
-              mastery[packId] = { avg: 0, attempted: false };
-            }
-          }
-          setPackMastery(mastery);
+      const activities = await fetchHistory();
+      const quizActivities = (activities as any[]).filter((a) => a.type === "quiz");
+      const byPack: Record<string, number[]> = {};
+      for (const q of quizActivities) {
+        const packId = q.packId as string | undefined;
+        if (!packId) continue;
+        const pct = q.totalQuestions > 0 ? (q.score / q.totalQuestions) * 100 : 0;
+        if (!byPack[packId]) byPack[packId] = [];
+        byPack[packId].push(pct);
+      }
+      const mastery: Record<string, { avg: number; attempted: boolean }> = {};
+      for (const packId of Object.keys(packNamesRef.current)) {
+        if (byPack[packId]?.length > 0) {
+          const avg = byPack[packId].reduce((a, b) => a + b, 0) / byPack[packId].length;
+          mastery[packId] = { avg, attempted: true };
+        } else {
+          mastery[packId] = { avg: 0, attempted: false };
         }
-      } catch { /* silent */ }
+      }
+      setPackMastery(mastery);
       setMasteryLoading(false);
     }
     setMasteryMode((prev) => !prev);
-  }, [masteryMode, packMastery]);
+  }, [masteryMode, packMastery, fetchHistory]);
 
-  // ── Export as PNG ──────────────────────────────────────
+  const toggleDecayMode = useCallback(async () => {
+    const turningOn = !decayMode;
+    if (turningOn && Object.keys(packLastActivityRef.current).length === 0) {
+      const activities = await fetchHistory();
+      const quizActivities = (activities as any[]).filter((a) => a.type === "quiz");
+      const lastByPack: Record<string, number | null> = {};
+      for (const packId of Object.keys(packNamesRef.current)) {
+        lastByPack[packId] = null;
+      }
+      for (const q of quizActivities) {
+        const packId = q.packId as string | undefined;
+        if (!packId) continue;
+        const ts = new Date(q.createdAt || q.date || Date.now()).getTime();
+        if (!lastByPack[packId] || ts > lastByPack[packId]!) lastByPack[packId] = ts;
+      }
+      packLastActivityRef.current = lastByPack;
+    }
+    setDecayMode(prev => !prev);
+  }, [decayMode, fetchHistory]);
+
+// ── Export as PNG ──────────────────────────────────────
 
   const exportPNG = useCallback(() => {
     const canvas = canvasRef.current;
@@ -493,14 +664,14 @@ export default function KnowledgeGraph() {
       const { w: W, h: H } = sizeRef.current;
       const CX = W / 2, CY = H / 2;
       // Alpha never fully decays — keeps a gentle minimum so nodes stay alive
-      const alpha = Math.max(0.08, 0.5 * Math.pow(0.997, tickCount.current));
+      const alpha = Math.max(PHYSICS.alphaMin, PHYSICS.alphaInitial * Math.pow(PHYSICS.alphaDecay, tickCount.current));
       tickCount.current++;
 
       // Center gravity (gentle pull so graph doesn't fly off)
       for (const n of ns) {
         if (dragNode.current === n || hidden.has(n.packId)) continue;
-        n.vx += (CX - n.x) * 0.0003;
-        n.vy += (CY - n.y) * 0.0003;
+        n.vx += (CX - n.x) * PHYSICS.gravityStrength;
+        n.vy += (CY - n.y) * PHYSICS.gravityStrength;
       }
 
       // Repulsion — much stronger so nodes spread out
@@ -513,7 +684,7 @@ export default function KnowledgeGraph() {
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
           const minDist = 120; // enforce minimum distance
           const effectiveDist = Math.max(dist, minDist * 0.5);
-          const repulse = 12000 / (effectiveDist * effectiveDist);
+          const repulse = PHYSICS.repulsion / (effectiveDist * effectiveDist);
           const rx = (dx / dist) * repulse * alpha;
           const ry = (dy / dist) * repulse * alpha;
           if (dragNode.current !== ns[i]) { ns[i].vx -= rx; ns[i].vy -= ry; }
@@ -532,8 +703,8 @@ export default function KnowledgeGraph() {
         const dx = tgt.x - src.x;
         const dy = tgt.y - src.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const target = e.type === "same-pack" ? 180 : 300;
-        const str = e.type === "same-pack" ? 0.006 : 0.0015 * e.strength;
+        const target = e.type === "same-pack" ? PHYSICS.samePackTarget : PHYSICS.crossPackTarget;
+        const str = e.type === "same-pack" ? PHYSICS.samePackSpring : PHYSICS.crossPackSpring * e.strength;
         const force = (dist - target) * str * alpha;
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -546,10 +717,10 @@ export default function KnowledgeGraph() {
         if (hidden.has(n.packId)) continue;
         if (dragNode.current === n) { n.vx = 0; n.vy = 0; continue; }
         // Subtle organic drift
-        n.vx += (Math.random() - 0.5) * 0.15;
-        n.vy += (Math.random() - 0.5) * 0.15;
-        n.vx *= 0.9;
-        n.vy *= 0.9;
+        n.vx += (Math.random() - 0.5) * PHYSICS.jitter;
+        n.vy += (Math.random() - 0.5) * PHYSICS.jitter;
+        n.vx *= PHYSICS.dampen;
+        n.vy *= PHYSICS.dampen;
         n.x += n.vx;
         n.y += n.vy;
         n.x = Math.max(40, Math.min(W - 40, n.x));
@@ -579,7 +750,7 @@ export default function KnowledgeGraph() {
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       // Background
-      const isDark = document.documentElement.classList.contains("dark");
+      const isDark = isDarkRef.current;
       const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.7);
       bg.addColorStop(0, isDark ? "#0f1729" : "#f0f4ff");
       bg.addColorStop(1, isDark ? "#060a14" : "#e8eef8");
@@ -632,6 +803,77 @@ export default function KnowledgeGraph() {
 
       const time = Date.now();
 
+      // Pack cluster backgrounds
+      const packGroups = new Map<string, TopicNode[]>();
+      for (const n of ns) {
+        if (hidden.has(n.packId)) continue;
+        if (focus && !focus.has(n.id)) continue;
+        if (!packGroups.has(n.packId)) packGroups.set(n.packId, []);
+        packGroups.get(n.packId)!.push(n);
+      }
+
+      for (const [packId, packNodes] of packGroups) {
+        if (packNodes.length < 2) continue;
+        const color = colors[packId] || "#60a5fa";
+        const rgb = hexToRgb(color);
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const n of packNodes) {
+          minX = Math.min(minX, n.x - n.radius);
+          maxX = Math.max(maxX, n.x + n.radius);
+          minY = Math.min(minY, n.y - n.radius);
+          maxY = Math.max(maxY, n.y + n.radius);
+        }
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        const rx = Math.max(40, (maxX - minX) / 2 + 28);
+        const ry = Math.max(35, (maxY - minY) / 2 + 24);
+
+        const clusterGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+        clusterGrad.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},${isDark ? 0.07 : 0.06})`);
+        clusterGrad.addColorStop(0.7, `rgba(${rgb.r},${rgb.g},${rgb.b},${isDark ? 0.04 : 0.03})`);
+        clusterGrad.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fillStyle = clusterGrad;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${isDark ? 0.15 : 0.12})`;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Cluster name label
+        const clusterName = clusterNamesRef.current.get(packId) ?? "";
+        if (clusterName) {
+          ctx.save();
+          ctx.font = `600 9px -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.textAlign = "center";
+          const labelY = cy - ry + 13;
+          const lw = ctx.measureText(clusterName.toUpperCase()).width + 10;
+          ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${isDark ? 0.18 : 0.14})`;
+          const lx = cx - lw / 2, ly = labelY - 8, lrw = lw, lrh = 14, lcr = 4;
+          ctx.beginPath();
+          ctx.moveTo(lx + lcr, ly);
+          ctx.lineTo(lx + lrw - lcr, ly);
+          ctx.quadraticCurveTo(lx + lrw, ly, lx + lrw, ly + lcr);
+          ctx.lineTo(lx + lrw, ly + lrh - lcr);
+          ctx.quadraticCurveTo(lx + lrw, ly + lrh, lx + lrw - lcr, ly + lrh);
+          ctx.lineTo(lx + lcr, ly + lrh);
+          ctx.quadraticCurveTo(lx, ly + lrh, lx, ly + lrh - lcr);
+          ctx.lineTo(lx, ly + lcr);
+          ctx.quadraticCurveTo(lx, ly, lx + lcr, ly);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${isDark ? 0.75 : 0.6})`;
+          ctx.fillText(clusterName.toUpperCase(), cx, labelY + 1);
+          ctx.restore();
+        }
+      }
+
       // Draw edges with animated energy flow
       for (const e of es) {
         const src = nodeMap.get(e.source);
@@ -642,6 +884,7 @@ export default function KnowledgeGraph() {
 
         const isHighlighted = sel && (e.source === sel.id || e.target === sel.id);
         const isDimmed = sel && !isHighlighted;
+        const isOnPath = pathEdgesRef.current.has(`${e.source}->${e.target}`) || pathEdgesRef.current.has(`${e.target}->${e.source}`);
 
         // Base line
         ctx.beginPath();
@@ -661,6 +904,40 @@ export default function KnowledgeGraph() {
         ctx.stroke();
         ctx.setLineDash([]);
 
+        if (isOnPath) {
+          ctx.beginPath();
+          ctx.moveTo(src.x, src.y);
+          ctx.lineTo(tgt.x, tgt.y);
+          ctx.strokeStyle = "rgba(16,185,129,0.85)";
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.stroke();
+        }
+
+        // Directed arrow for prerequisite edges
+        if (e.type === "cross-pack" && !isDimmed) {
+          const dir = directedEdgeMapRef.current.get(`${e.source}->${e.target}`);
+          if (dir) {
+            const drawArrow = (fromX: number, fromY: number, toX: number, toY: number, targetRadius: number) => {
+              const angle = Math.atan2(toY - fromY, toX - fromX);
+              const headLen = 8;
+              const hAngle = Math.PI / 6;
+              const ax = toX - Math.cos(angle) * (targetRadius + 2);
+              const ay = toY - Math.sin(angle) * (targetRadius + 2);
+              ctx.beginPath();
+              ctx.moveTo(ax - headLen * Math.cos(angle - hAngle), ay - headLen * Math.sin(angle - hAngle));
+              ctx.lineTo(ax, ay);
+              ctx.lineTo(ax - headLen * Math.cos(angle + hAngle), ay - headLen * Math.sin(angle + hAngle));
+              ctx.strokeStyle = isHighlighted ? "rgba(251,191,36,0.9)" : "rgba(251,146,60,0.5)";
+              ctx.lineWidth = isHighlighted ? 1.5 : 1;
+              ctx.setLineDash([]);
+              ctx.stroke();
+            };
+            if (dir === "forward" || dir === "both") drawArrow(src.x, src.y, tgt.x, tgt.y, tgt.radius);
+            if (dir === "backward" || dir === "both") drawArrow(tgt.x, tgt.y, src.x, src.y, src.radius);
+          }
+        }
+
         // Animated energy dot flowing along highlighted edges
         if (isHighlighted && !isDimmed) {
           const dx = tgt.x - src.x;
@@ -676,6 +953,50 @@ export default function KnowledgeGraph() {
           ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
           ctx.fillStyle = dotGlow;
           ctx.fill();
+        }
+      }
+
+      // Edge label for hovered cross-pack edge
+      const he = hoveredEdge.current;
+      if (he) {
+        const hsrc = nodeMap.get(he.source);
+        const htgt = nodeMap.get(he.target);
+        if (hsrc && htgt) {
+          const mx = (hsrc.x + htgt.x) / 2;
+          const my = (hsrc.y + htgt.y) / 2;
+          const keywords = edgeKeywordsCacheRef.current.get(`${he.source}->${he.target}`)
+            ?? edgeKeywordsCacheRef.current.get(`${he.target}->${he.source}`)
+            ?? [];
+          if (keywords.length > 0) {
+            const label = keywords.join(" · ");
+            ctx.font = "500 10px -apple-system, BlinkMacSystemFont, sans-serif";
+            const tw = ctx.measureText(label).width;
+            const px = 8, py = 5;
+            ctx.fillStyle = isDark ? "rgba(15,23,42,0.9)" : "rgba(255,255,255,0.92)";
+            ctx.strokeStyle = "rgba(251,146,60,0.4)";
+            ctx.lineWidth = 0.8;
+            const rx = mx - tw / 2 - px;
+            const ry = my - 8 - py;
+            const rw = tw + px * 2;
+            const rh = 16 + py * 2;
+            const cr = 6;
+            ctx.beginPath();
+            ctx.moveTo(rx + cr, ry);
+            ctx.lineTo(rx + rw - cr, ry);
+            ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + cr);
+            ctx.lineTo(rx + rw, ry + rh - cr);
+            ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - cr, ry + rh);
+            ctx.lineTo(rx + cr, ry + rh);
+            ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - cr);
+            ctx.lineTo(rx, ry + cr);
+            ctx.quadraticCurveTo(rx, ry, rx + cr, ry);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = isDark ? "rgba(251,146,60,0.9)" : "rgba(180,80,0,0.85)";
+            ctx.textAlign = "center";
+            ctx.fillText(label, mx, my + 6);
+          }
         }
       }
 
@@ -704,10 +1025,16 @@ export default function KnowledgeGraph() {
         const isConnected = connectedIds.has(n.id);
         const isDimmed = sel && !isSelected && !isConnected;
         const isHovered = hoveredNode.current?.id === n.id;
+        const isOnPath = pathNodesRef.current.has(n.id);
         const isSearchMatch = hasSearch && searchMatches.has(n.id);
         const isSearchDimmed = hasSearch && !isSearchMatch;
 
-        const globalAlpha = isDimmed ? 0.55 : isSearchDimmed ? 0.45 : 1;
+        let globalAlpha = isDimmed ? 0.55 : isSearchDimmed ? 0.45 : 1;
+        if (decayModeRef.current && !isDimmed && !isSearchDimmed) {
+          const lastActivity = packLastActivityRef.current[n.packId] ?? null;
+          globalAlpha = Math.min(globalAlpha, computeDecayAlpha(lastActivity));
+        }
+        ctx.save();
         ctx.globalAlpha = globalAlpha;
 
         const sizeBonus = Math.min(4, (n.flashcardCount + n.quizCount) * 0.5);
@@ -798,6 +1125,16 @@ export default function KnowledgeGraph() {
         ctx.lineWidth = isSelected ? 2.5 : isHovered ? 1.5 : 1;
         ctx.stroke();
 
+        if (isOnPath) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r + 5, 0, Math.PI * 2);
+          ctx.strokeStyle = pathStartRef.current?.id === n.id ? "rgba(52,211,153,0.9)" : "rgba(16,185,129,0.7)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([3, 3]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
         // ── Layer 6: Glass highlight (crescent) ──
         ctx.beginPath();
         ctx.arc(n.x - r * 0.15, n.y - r * 0.2, r * 0.55, -Math.PI * 0.8, Math.PI * 0.15);
@@ -806,6 +1143,21 @@ export default function KnowledgeGraph() {
         glass.addColorStop(1, "rgba(255,255,255,0)");
         ctx.fillStyle = glass;
         ctx.fill();
+
+        // Gap detection indicator
+        if (isGapNode(n)) {
+          const gx = n.x + r * 0.65;
+          const gy = n.y - r * 0.65;
+          const gr = 5;
+          ctx.beginPath();
+          ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(251,146,60,0.95)";
+          ctx.fill();
+          ctx.font = "bold 7px -apple-system, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "white";
+          ctx.fillText("!", gx, gy + 2.5);
+        }
 
         // ── Layer 7: Pulsing core ──
         const corePulse = 0.6 + 0.4 * Math.sin(time / 600 + phase * 2);
@@ -834,10 +1186,73 @@ export default function KnowledgeGraph() {
           : isDark ? "rgba(220,230,240,0.85)" : "rgba(30,41,59,0.85)";
         ctx.fillText(label, n.x, n.y + r + 17);
 
-        ctx.globalAlpha = 1;
+        ctx.restore();
       }
 
       ctx.restore();
+
+      // ── Minimap ──────────────────────────────────────────
+      const mm = minimapCanvasRef.current;
+      if (mm) {
+        const mCtx = mm.getContext("2d");
+        if (mCtx) {
+          const MW = 140, MH = 90;
+          if (mm.width !== MW) mm.width = MW;
+          if (mm.height !== MH) mm.height = MH;
+          mCtx.fillStyle = isDark ? "rgba(6,10,20,0.92)" : "rgba(240,244,255,0.92)";
+          mCtx.fillRect(0, 0, MW, MH);
+
+          const visNs = ns.filter(n => !hidden.has(n.packId));
+          if (visNs.length > 0) {
+            let mnX = Infinity, mxX = -Infinity, mnY = Infinity, mxY = -Infinity;
+            for (const n of visNs) {
+              mnX = Math.min(mnX, n.x); mxX = Math.max(mxX, n.x);
+              mnY = Math.min(mnY, n.y); mxY = Math.max(mxY, n.y);
+            }
+            const pad = 20;
+            const worldW = Math.max(mxX - mnX + pad * 2, 100);
+            const worldH = Math.max(mxY - mnY + pad * 2, 100);
+            const scaleX = MW / worldW;
+            const scaleY = MH / worldH;
+            const mmScale = Math.min(scaleX, scaleY) * 0.85;
+            const offX = (MW - worldW * mmScale) / 2 - mnX * mmScale + pad * mmScale;
+            const offY = (MH - worldH * mmScale) / 2 - mnY * mmScale + pad * mmScale;
+
+            for (const n of visNs) {
+              const mx2 = n.x * mmScale + offX;
+              const my2 = n.y * mmScale + offY;
+              const mr = Math.max(2, n.radius * mmScale * 0.8);
+              const nc = colors[n.packId] || "#60a5fa";
+              mCtx.beginPath();
+              mCtx.arc(mx2, my2, mr, 0, Math.PI * 2);
+              mCtx.fillStyle = nc;
+              mCtx.globalAlpha = 0.8;
+              mCtx.fill();
+              mCtx.globalAlpha = 1;
+            }
+
+            const t2 = transformRef.current;
+            const { w: CW, h: CH } = sizeRef.current;
+            const vx0 = (-t2.x) / t2.scale;
+            const vy0 = (-t2.y) / t2.scale;
+            const vx1 = (CW - t2.x) / t2.scale;
+            const vy1 = (CH - t2.y) / t2.scale;
+            const vrx = vx0 * mmScale + offX;
+            const vry = vy0 * mmScale + offY;
+            const vrw = (vx1 - vx0) * mmScale;
+            const vrh = (vy1 - vy0) * mmScale;
+            mCtx.strokeStyle = "rgba(255,255,255,0.6)";
+            mCtx.lineWidth = 1;
+            mCtx.strokeRect(vrx, vry, vrw, vrh);
+            mCtx.fillStyle = "rgba(255,255,255,0.04)";
+            mCtx.fillRect(vrx, vry, vrw, vrh);
+          }
+
+          mCtx.strokeStyle = isDark ? "rgba(148,163,184,0.2)" : "rgba(100,116,139,0.2)";
+          mCtx.lineWidth = 1;
+          mCtx.strokeRect(0, 0, MW, MH);
+        }
+      }
     }
 
     function loop() {
@@ -887,7 +1302,7 @@ export default function KnowledgeGraph() {
         .filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
         .map((e) => {
           const otherId = e.source === selectedNode.id ? e.target : e.source;
-          const otherNode = nodesRef.current.find((n) => n.id === otherId);
+          const otherNode = nodeMapRef.current.get(otherId);
           return otherNode ? { node: otherNode, type: e.type, strength: e.strength } : null;
         })
         .filter(Boolean) as { node: TopicNode; type: string; strength: number }[]
@@ -978,6 +1393,20 @@ export default function KnowledgeGraph() {
           )}
         </div>
 
+        {/* Path Finder */}
+        <button
+          onClick={() => { if (pathMode) clearPath(); else setPathMode(true); }}
+          title="Find shortest path between two topics"
+          className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors ${
+            pathMode
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <Network className="h-3.5 w-3.5" />
+          {pathMode ? "Cancel" : "Path"}
+        </button>
+
         {/* Mastery Overlay */}
         <button
           onClick={toggleMasteryMode}
@@ -993,6 +1422,21 @@ export default function KnowledgeGraph() {
           Mastery
         </button>
 
+        {/* Time Decay */}
+        <button
+          onClick={toggleDecayMode}
+          title="Fade nodes by days since last study"
+          className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors ${
+            decayMode
+              ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              : "border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <TrendingUp className="h-3.5 w-3.5" />
+          Decay
+        </button>
+
+
         {/* Export PNG */}
         <button
           onClick={exportPNG}
@@ -1003,6 +1447,28 @@ export default function KnowledgeGraph() {
           Export
         </button>
       </div>
+
+      {/* Path Finder Status Bar */}
+      {pathMode && (
+        <div className="flex items-center gap-2 border-b border-border bg-emerald-500/5 px-4 py-2 text-xs">
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {!pathStart ? (
+            <span className="text-muted-foreground">Click a <strong className="text-foreground">start node</strong> on the graph</span>
+          ) : !pathEnd ? (
+            <span className="text-muted-foreground">
+              Start: <strong className="text-emerald-600 dark:text-emerald-400">{pathStart.name}</strong> — now click an <strong className="text-foreground">end node</strong>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">
+              Path: <strong className="text-foreground">{pathStart.name}</strong> → <strong className="text-foreground">{pathEnd.name}</strong>
+              {pathNodesRef.current.size > 0 ? ` (${pathNodesRef.current.size} nodes)` : " — no path found"}
+            </span>
+          )}
+          <button onClick={clearPath} className="ml-auto text-muted-foreground hover:text-foreground">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Search Results Dropdown */}
       {searchQuery && searchResults.length > 0 && (
@@ -1050,6 +1516,15 @@ export default function KnowledgeGraph() {
           onWheel={handleWheel}
           className="cursor-grab active:cursor-grabbing"
           style={{ display: "block" }}
+        />
+
+        {/* Minimap */}
+        <canvas
+          ref={minimapCanvasRef}
+          width={140}
+          height={90}
+          className="absolute bottom-12 left-3 z-10 rounded-lg opacity-80 hover:opacity-100 transition-opacity pointer-events-none"
+          style={{ width: 140, height: 90 }}
         />
 
         {/* Right Panel */}
@@ -1363,13 +1838,6 @@ export default function KnowledgeGraph() {
 }
 
 // ── Helpers ────────────────────────────────────────────
-
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
   return {

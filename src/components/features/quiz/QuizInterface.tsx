@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import QuizResults from "./QuizResults";
+import MathText from "@/components/ui/math-text";
 
 interface Question {
   _id: string;
@@ -113,7 +114,7 @@ export default function QuizInterface({ questions, studyPackId }: QuizInterfaceP
           Question {currentIndex + 1}
         </p>
         <p className="text-lg font-medium text-foreground">
-          {currentQuestion.question}
+          <MathText text={currentQuestion.question} />
         </p>
 
         {/* Options */}
@@ -139,7 +140,7 @@ export default function QuizInterface({ questions, studyPackId }: QuizInterfaceP
                 >
                   {letters[idx]}
                 </span>
-                <span className="flex-1">{option}</span>
+                <span className="flex-1"><MathText text={option} /></span>
                 {isSelected && (
                   <svg
                     className="h-5 w-5 shrink-0 text-orange-500"

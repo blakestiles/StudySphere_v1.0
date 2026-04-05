@@ -6,6 +6,9 @@ import { Plus, Trash2, Search, BookOpen, Loader2, NotebookPen } from "lucide-rea
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Notebook {
   _id: string;
@@ -69,6 +72,8 @@ export default function NotebookList({ notebooks: initial, studyPacks }: Noteboo
   const [notebooks, setNotebooks] = useState(initial);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filtered = notebooks.filter((n) =>
     n.title.toLowerCase().includes(search.toLowerCase())
@@ -96,17 +101,25 @@ export default function NotebookList({ notebooks: initial, studyPacks }: Noteboo
     }
   };
 
-  const deleteNotebook = async (id: string, e: React.MouseEvent) => {
+  const confirmDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Delete this notebook?")) return;
+    setDeleteId(id);
+  };
+
+  const deleteNotebook = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/notebooks/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/notebooks/${deleteId}`, { method: "DELETE" });
       if (res.ok) {
-        setNotebooks((prev) => prev.filter((n) => n._id !== id));
+        setNotebooks((prev) => prev.filter((n) => n._id !== deleteId));
         toast.success("Notebook deleted");
+        setDeleteId(null);
       }
     } catch {
       toast.error("Failed to delete notebook");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -239,7 +252,7 @@ export default function NotebookList({ notebooks: initial, studyPacks }: Noteboo
 
                   {/* Delete button — hover reveal */}
                   <button
-                    onClick={(e) => deleteNotebook(notebook._id, e)}
+                    onClick={(e) => confirmDelete(notebook._id, e)}
                     className="absolute top-3 right-3 rounded-lg p-1.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-500/10 transition-all"
                     title="Delete"
                   >
@@ -251,6 +264,39 @@ export default function NotebookList({ notebooks: initial, studyPacks }: Noteboo
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Delete confirmation dialog ── */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete notebook?</DialogTitle>
+            <DialogDescription>
+              {deleteId && (() => {
+                const nb = notebooks.find((n) => n._id === deleteId);
+                return nb ? (
+                  <><span className="font-medium text-foreground">&ldquo;{nb.title}&rdquo;</span> and all its notes will be permanently deleted. This cannot be undone.</>
+                ) : "This notebook will be permanently deleted. This cannot be undone.";
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => setDeleteId(null)}
+              className="rounded-xl border border-border/60 bg-card px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={deleteNotebook}
+              disabled={deleting}
+              className="flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+            >
+              {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Delete
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

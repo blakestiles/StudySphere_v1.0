@@ -19,6 +19,7 @@ export interface GeneratedStudyPack {
       question: string;
       answer: string;
       difficulty: "easy" | "medium" | "hard";
+      sourcePage: number | null;
     }[];
     quizQuestions: {
       question: string;
@@ -73,7 +74,8 @@ Generate a JSON object with the following structure:
         {
           "question": "Question text",
           "answer": "Answer text",
-          "difficulty": "easy" | "medium" | "hard"
+          "difficulty": "easy" | "medium" | "hard",
+          "sourcePage": 3
         }
       ],
       "quizQuestions": [
@@ -111,6 +113,7 @@ Requirements:
 - correctAnswer is the 0-based index of the correct option
 - Each topic should have 2-3 cloze (fill-in-the-blank) questions
 - For cloze questions: take a key sentence from the material, replace 1-3 important terms with {{BLANK_1}}, {{BLANK_2}}, etc. The answers array must contain the replaced terms in order.
+- For each flashcard, include "sourcePage": the page number from [PAGE N] markers where this concept appears, or null if the text has no page markers
 - Make questions test understanding, not just memorization
 - The mindMap should mirror the topic structure with 2-3 subtopics per topic as children
 - Return ONLY valid JSON, no additional text`,

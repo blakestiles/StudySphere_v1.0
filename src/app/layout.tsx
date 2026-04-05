@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, DM_Sans } from "next/font/google";
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";

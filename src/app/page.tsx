@@ -33,6 +33,12 @@ import {
   Puzzle,
   Headphones,
   TrendingUp,
+  ScrollText,
+  Calculator,
+  Store,
+  History,
+  Search,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import { motion, useScroll, useTransform } from "motion/react";
@@ -86,6 +92,8 @@ const coreFeatures: { icon: LucideIcon; title: string; desc: string; color: stri
   { icon: MessageSquare, title: "AI Tutor", desc: "Chat with an AI that has read every word of your material. Ask anything and get cited, grounded answers.", color: "text-sky-400", bg: "bg-sky-400/10" },
   { icon: PenTool, title: "Practice Essays", desc: "Write essay answers and get AI grading on Accuracy, Depth, Clarity, and Critical Thinking with actionable feedback.", color: "text-rose-400", bg: "bg-rose-400/10" },
   { icon: ClipboardCheck, title: "AI Exam Simulator", desc: "Timed, proctored exams with fullscreen lockdown, tab-switch warnings, and auto-submit to simulate real test conditions.", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+  { icon: ScrollText, title: "Cheat Sheet Generator", desc: "Generate condensed 1-4 page exam cheat sheets from any study pack. Download as Markdown instantly.", color: "text-orange-400", bg: "bg-orange-400/10" },
+  { icon: Calculator, title: "Grade Calculator", desc: "Enter your current grades and upcoming assignment weights. Calculate exactly what score you need on the final to hit your target grade.", color: "text-lime-400", bg: "bg-lime-400/10" },
 ];
 
 const powerTools: { icon: LucideIcon; title: string; desc: string; color: string }[] = [
@@ -100,6 +108,13 @@ const powerTools: { icon: LucideIcon; title: string; desc: string; color: string
   { icon: TrendingUp, title: "AI Weekly Report", desc: "Automated performance analysis with trends, strengths, weak spots, and recommendations.", color: "text-indigo-400" },
   { icon: CalendarDays, title: "Study Calendar", desc: "Plan and track study sessions with a visual calendar. Never miss a review or study goal.", color: "text-sky-400" },
   { icon: BookOpen, title: "Document Viewer", desc: "Read your uploaded materials with highlighting, annotations, and AI-powered note-taking.", color: "text-lime-400" },
+  { icon: ScrollText, title: "Cheat Sheets", desc: "One-click condensed cheat sheets for any study pack. 1-4 pages, AI-written, downloadable.", color: "text-orange-400" },
+  { icon: Calculator, title: "Grade Calculator", desc: "What-if calculator for your GPA. Know exactly what you need before exam day.", color: "text-lime-400" },
+  { icon: Store, title: "Study Exchange", desc: "Share your study packs with other students or discover packs others have shared.", color: "text-cyan-400" },
+  { icon: History, title: "Study History", desc: "Full log of every quiz attempt, exam, focus session, and flashcard review. Track your progress over time.", color: "text-slate-400" },
+  { icon: Link2, title: "Smart Import", desc: "Import study material from PDFs, YouTube videos, Google Docs, Google Drive, web URLs, and Notion pages.", color: "text-blue-400" },
+  { icon: Target, title: "Weak Area Detection", desc: "AI analyzes every quiz attempt to pinpoint exactly which topics need more attention and auto-prioritizes them.", color: "text-red-400" },
+  { icon: Search, title: "Global Search", desc: "Search across all your documents, study packs, notes, and flashcards from anywhere with Cmd+K.", color: "text-purple-400" },
 ];
 
 const useCases: { icon: LucideIcon; title: string; desc: string }[] = [
@@ -119,7 +134,7 @@ const testimonials = [
 ];
 
 const parallaxStats = [
-  { value: "26+", label: "AI-powered features", sublabel: "All in one platform", accent: "text-amber-400" },
+  { value: "35+", label: "AI-powered features", sublabel: "All in one platform", accent: "text-amber-400" },
   { value: "2 min", label: "To generate a study pack", sublabel: "From raw notes to flashcards", accent: "text-emerald-400" },
   { value: "98%", label: "Student satisfaction", sublabel: "Based on user surveys", accent: "text-violet-400" },
   { value: "10×", label: "Faster than manual study", sublabel: "AI does the heavy lifting", accent: "text-rose-400" },
@@ -145,6 +160,11 @@ const carouselFeatures = [
   { id: "report", label: "AI Weekly Report", icon: TrendingUp, description: "Automated performance analysis with trends, strengths, weak spots, and personalized recommendations.", details: ["Week-over-week comparisons", "Actionable improvement tips", "Study habit insights"] },
   { id: "calendar", label: "Study Calendar", icon: CalendarDays, description: "Plan and track study sessions with a visual calendar. Never miss a review or study goal.", details: ["Drag-and-drop scheduling", "Color-coded session types", "Integration with study plans"] },
   { id: "docs", label: "Document Viewer", icon: BookOpen, description: "Read your uploaded materials with highlighting, annotations, and AI-powered note-taking.", details: ["In-line highlighting", "Margin annotations", "AI summary sidebar"] },
+  { id: "cheatsheet", label: "Cheat Sheets", icon: ScrollText, description: "Generate condensed 1-4 page exam cheat sheets from any study pack, downloadable as Markdown.", details: ["AI selects the most exam-relevant content", "1, 2, 3, or 4 page options", "Download as Markdown instantly"] },
+  { id: "gradecalc", label: "Grade Calculator", icon: Calculator, description: "Enter your current grades and upcoming assignment weights to calculate what score you need on the final.", details: ["Works even when weights don't sum to 100%", "What-if slider for scenario planning", "Letter grade display with live updates"] },
+  { id: "history", label: "Study History", icon: History, description: "Complete log of every quiz attempt, exam, focus session, and flashcard review with performance trends.", details: ["Quiz and exam score timeline", "Focus session history", "Flashcard review log"] },
+  { id: "import", label: "Smart Import", icon: Link2, description: "Import study material from PDFs, YouTube videos, Google Docs, Google Drive files, web URLs, and Notion pages.", details: ["YouTube transcript extraction", "Google Docs & Drive support", "Web page + Notion import"] },
+  { id: "weakareas", label: "Weak Area Detection", icon: Target, description: "AI analyzes every quiz attempt to automatically identify which topics need more attention and surface targeted practice.", details: ["Post-quiz automatic analysis", "Topic-level weak area mapping", "Prioritized review suggestions"] },
 ];
 
 const liveNotifications = [
@@ -156,6 +176,7 @@ const liveNotifications = [
   { icon: <BarChart3 className="w-4 h-4 text-blue-400" />, name: "Weekly report ready", description: "Your AI analysis for this week is in", time: "20m ago", color: "bg-blue-500/10" },
   { icon: <MessageSquare className="w-4 h-4 text-sky-400" />, name: "AI Tutor answered", description: "Explained quantum superposition in 3 ways", time: "25m ago", color: "bg-sky-500/10" },
   { icon: <PenTool className="w-4 h-4 text-pink-400" />, name: "Essay graded", description: "Sarah got A on Constitutional Law essay", time: "30m ago", color: "bg-pink-500/10" },
+  { icon: <ScrollText className="w-4 h-4 text-orange-400" />, name: "Cheat sheet ready", description: "2-page cheat sheet for Organic Chemistry generated", time: "3m ago", color: "bg-orange-500/10" },
 ];
 
 const bounceCards = [
@@ -176,6 +197,9 @@ const interactiveTabs = [
           { icon: FileText, title: "Smart Summaries", desc: "Hierarchical outlines extracted from your material", color: "text-amber-500" },
           { icon: Layers, title: "Flashcards", desc: "SM-2 spaced repetition cards with difficulty ratings", color: "text-emerald-400" },
           { icon: Brain, title: "Quiz Questions", desc: "MCQ, fill-in-blank, and matching — all AI-generated", color: "text-violet-400" },
+          { icon: ScrollText, title: "Cheat Sheets", desc: "1-4 page condensed exam sheets, downloadable as Markdown", color: "text-orange-400" },
+          { icon: Link2, title: "Smart Import", desc: "PDF, YouTube, Google Docs, Drive, web URLs, Notion", color: "text-blue-400" },
+          { icon: Network, title: "Mind Maps", desc: "Auto-generated topic maps with interactive visualization", color: "text-sky-400" },
         ].map((item) => (
           <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#0c0c16] p-6 hover:border-amber-500/20 transition-colors">
             <item.icon className={`w-8 h-8 ${item.color} mb-4`} />
@@ -216,6 +240,9 @@ const interactiveTabs = [
           { icon: BarChart3, title: "Analytics", desc: "Study streaks, quiz scores, and time distribution charts", color: "text-blue-400" },
           { icon: TrendingUp, title: "AI Weekly Report", desc: "Automated performance analysis with recommendations", color: "text-indigo-400" },
           { icon: Trophy, title: "Goal Tracking", desc: "Set targets, track progress, and get AI suggestions", color: "text-amber-500" },
+          { icon: Calculator, title: "Grade Calculator", desc: "What-if score calculator to hit your target GPA", color: "text-lime-400" },
+          { icon: History, title: "Study History", desc: "Full log of quizzes, exams, sessions, and flashcard reviews", color: "text-slate-400" },
+          { icon: Target, title: "Weak Area Detection", desc: "AI identifies your knowledge gaps after every quiz", color: "text-red-400" },
         ].map((item) => (
           <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#0c0c16] p-6 hover:border-amber-500/20 transition-colors">
             <item.icon className={`w-8 h-8 ${item.color} mb-4`} />
@@ -234,6 +261,9 @@ const marqueeItems = [
   "Analytics", "Cornell Notes", "Goal Tracking", "Audio Study", "Smart Reminders",
   "Weekly Report", "Study Calendar", "Document Viewer", "Matching Game", "Fill-in-the-Blank",
   "Weak Area Detection", "AI Study Plan", "Flashcard Reviews", "Chat Threads", "Annotations",
+  "Cheat Sheet Generator", "Grade Calculator", "Study Exchange", "Google Drive Import",
+  "YouTube Import", "Google Docs Import", "Notion Import", "Web URL Import",
+  "History", "Weak Area Detection", "Command Palette", "Global Search", "Study Pack Export",
 ];
 
 export default function LandingPage() {
