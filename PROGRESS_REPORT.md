@@ -1157,6 +1157,46 @@ StudySphere/
 
 ---
 
+## Week 12: Security Hardening, PPTX Import, Cheat Sheet Exports & Lo-Fi Focus Music
+
+### 1. Security & Correctness Fixes
+
+#### 1.1 SSRF Protection in URL Import (`POST /api/documents/import-url`)
+The URL import endpoint was vulnerable to Server-Side Request Forgery — an attacker could supply an internal URL (e.g., `http://192.168.1.1`) and the server would fetch it. I added a two-stage guard: hostname-level blocking (rejecting `localhost`, `.local`, `.internal` strings before any network call) and DNS pre-resolution using `dns.promises.lookup`. After resolving the hostname to an IP address, `isPrivateIP()` checks against RFC 1918 ranges, the loopback address, link-local range, and IPv6 private prefixes. A known limitation — DNS rebinding attacks — is documented with a comment pointing to `undici` connect hooks as a full mitigation path.
+
+The streaming response reader was also fixed. The original `reduce`-based chunk concatenation was O(n²) — each iteration copied all previous data. The fix pre-tracks `totalBytes` as chunks arrive and allocates a single `Uint8Array` of that exact size for the final merge. An unguarded `res.body?.getReader()` optional chain that could silently produce an empty document string was replaced with an explicit null guard.
+
+#### 1.2 Marketplace N+1 Query and Privacy Fix (`GET /api/marketplace`)
+The original implementation called `Topic.countDocuments({ studyPackId: pack._id })` once per study pack in a `.map()` loop — 50 packs meant 50 sequential database round trips. I replaced this with a single MongoDB aggregate pipeline: `$match` to the relevant `studyPackId` set, `$group` by `studyPackId` with `$sum: 1`. Author names are fetched in one batched `User.find()` call. The `shareToken` field was also being included in the response payload; it is now excluded.
+
+#### 1.3 `revalidateTag` Second-Argument Bug (All Import Routes)
+`revalidateTag(TAGS.documents(userId), "")` was present in all four import routes (`import-url`, `import-notion`, `import-gdocs`, `upload`). `revalidateTag` accepts exactly one string argument — the extra `""` was a type error silently dropped at runtime in some Next.js versions but incorrect. Fixed across all routes.
+
+### 2. PowerPoint / Slides Import
+
+#### 2.1 PPTX Parser (`src/lib/pptx.ts`)
+PPTX files are ZIP archives following the OOXML spec. I used `adm-zip` to extract entries matching `ppt/slides/slideN.xml`, sorted them numerically via a regex capture on the filename, then parsed each slide's XML with two regex passes: one to identify title placeholder elements (`<p:ph type="title|ctrTitle">`), and another to extract all `<a:t>` text run nodes. Each slide becomes a `## Slide N: Title` Markdown header followed by the body text. An `isPPTXBuffer()` guard checks the ZIP magic bytes (`0x50 0x4B 0x03 0x04`) to reject renamed non-PPTX uploads.
+
+#### 2.2 Upload Route Integration (`POST /api/documents/upload`)
+The upload API now checks for PPTX by MIME type (`application/vnd.openxmlformats-officedocument.presentationml.presentation`) and `.pptx` extension. The PPTX branch runs `isPPTXBuffer()` before `extractTextFromPPTX()` and saves the document with `fileType: "pptx"`. The `Document` model's `fileType` enum was updated to include `"pptx"`.
+
+#### 2.3 Upload UI (`PptxUploadZone.tsx`, `UploadShell.tsx`)
+`PptxUploadZone` is a new drag-and-drop zone mirroring `FileUploadZone` with the same amber design system styling. It accepts only `.pptx` files, validates client-side, and shows upload progress. It appears as a "Slides" tab between the PDF and Photo tabs in `UploadShell`.
+
+### 3. Cheat Sheet Exports
+
+#### 3.1 PPTX Export (`POST /api/cheat-sheets/[id]/export`)
+A new server-side route uses `pptxgenjs` to generate a PowerPoint file from any cheat sheet. The Markdown content is parsed into sections — each `##` heading becomes a new slide title, list items become bullet points. The presentation uses a dark background (`#1a1a2e`), amber section titles (`#f59e0b`), and white body text. Slides with more than 12 bullets get an automatic `(cont.)` overflow slide. The binary PPTX data is streamed back with `application/vnd.openxmlformats-officedocument.presentationml.presentation` headers.
+
+#### 3.2 PDF Print (`/cheat-sheets/[id]/print`)
+A new server-rendered page fetches the cheat sheet, verifies ownership, and renders the Markdown using `ReactMarkdown` with `remark-gfm`. All styles are inlined in a `<style>` block using Georgia serif typography, proper heading hierarchy, code block styling, and `@media print` rules for page-break control. A `<script>` tag fires `window.print()` via a `DOMContentLoaded` + 300ms delay — this ensures fonts and styles have fully applied before the dialog opens (the earlier `"load"` event approach had a race condition). The cheat sheets page adds "Export PPTX" and "Print PDF" buttons that trigger these endpoints.
+
+### 4. Lo-Fi Beats Music Player in Focus Mode
+
+A `LoFiPlayer` component was added to `FocusMode.tsx` that embeds the Lofi Girl 24/7 YouTube stream (`jfKfPfyJRdk`). The iframe is kept visible in the DOM as required by YouTube's Terms of Service — hidden autoplay is not permitted. The component shows a compact violet-accented card with a Play/Stop toggle button and three animated equalizer bars using CSS keyframe animations with staggered delays. `AnimatePresence` wraps the iframe section for smooth height expand/collapse transitions. A `musicOn` boolean in `FocusMode` state persists across the setup → active phase transition so users can enable music before starting their Pomodoro and have it continue uninterrupted.
+
+---
+
 ## Summary
 
 All Week 1-10 deliverables are **fully implemented and functional**. The application has:
@@ -1189,5 +1229,10 @@ All Week 1-10 deliverables are **fully implemented and functional**. The applica
 - **Unified amber design system** (Week 11) applied across all 24 pages, eliminating all dark-only third-party components in favor of theme-aware, amber-accented cards, Lucide icons, and `motion/react` animations.
 - **Knowledge Graph enhancements** (Week 11) — Mastery Overlay (node color-coded by quiz performance), Graph Insights panel (hub topics, cross-pack bridges, isolated topic warnings), and Quick Study Actions (Flashcards + Take Quiz buttons in the node detail panel).
 - **Profile overhaul** (Week 11) — streak hero strip, 4-column stats grid, redesigned achievement badges with Lucide icons, amber glow for unlocked achievements, and a native-input security form.
+- **Security hardening** (Week 12) — SSRF protection in URL import (DNS pre-resolution + private IP blocklist), fixed streaming response reader (pre-allocated `Uint8Array`), fixed N+1 marketplace query (MongoDB aggregate), removed `shareToken` privacy leak, fixed `revalidateTag` calls across all import routes.
+- **PowerPoint / Slides Import** (Week 12) — `.pptx` upload support using `adm-zip` ZIP extraction and XML regex parsing; slide titles become section headers; magic byte validation; new "Slides" tab in `UploadShell`; `Document` model updated with `"pptx"` fileType.
+- **Cheat Sheet PPTX Export** (Week 12) — server-side `pptxgenjs` export with dark background, amber titles, and overflow slides; streamed as binary download.
+- **Cheat Sheet PDF Print** (Week 12) — print-optimized server-rendered page with Georgia typography, inline CSS, and auto-triggered `window.print()` via `DOMContentLoaded` + 300ms delay.
+- **Lo-Fi Beats music player in Focus Mode** (Week 12) — embedded YouTube iframe (Lofi Girl 24/7 stream), animated equalizer bars, `AnimatePresence` expand/collapse, music state persists across Pomodoro phase transitions.
 
-The application comprises **21 Mongoose models**, **24 pages**, and **46 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout. The frontend is fully theme-aware (dark/light), consistently designed, and production-ready.
+The application now comprises **21 Mongoose models**, **25 pages**, and **48 API routes**. All routes return correct HTTP status codes. The backend follows RESTful conventions with authentication, authorization, input validation (Zod v4), and descriptive error handling throughout. The frontend is fully theme-aware (dark/light), consistently designed, and production-ready.

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Play, Settings, History, Timer, CheckCircle2, Circle,
-  ChevronDown, Plus, X, Loader2, Trophy, Coffee, Zap,
+  ChevronDown, Plus, X, Loader2, Trophy, Coffee, Zap, Headphones, Volume2, VolumeX,
 } from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
 
@@ -87,6 +87,85 @@ function fmtDate(s: string) {
     new Date(s).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+/* ── Lo-Fi Player ───────────────────────────────────── */
+function LoFiPlayer({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all duration-300 ${
+            on
+              ? "bg-violet-500/15 border-violet-500/30 text-violet-500"
+              : "bg-muted/40 border-border/50 text-muted-foreground"
+          }`}>
+            <Headphones className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-foreground leading-none">Lo-Fi Beats</p>
+            <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+              {on ? "Playing · Lofi Girl 24/7" : "Concentration music"}
+            </p>
+          </div>
+          {on && (
+            <motion.div
+              className="flex items-end gap-[3px] h-4 ml-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="w-[3px] rounded-full bg-violet-500"
+                  animate={{ height: ["6px", "14px", "6px"] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                />
+              ))}
+            </motion.div>
+          )}
+        </div>
+        <button
+          onClick={onToggle}
+          className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+            on
+              ? "bg-violet-500/10 border-violet-500/25 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20"
+              : "bg-gradient-to-br from-violet-500 to-purple-600 border-transparent text-white shadow-[0_2px_8px_oklch(0.55_0.2_293_/_30%)] hover:opacity-90"
+          }`}
+        >
+          {on ? <><VolumeX className="h-3 w-3" /> Stop</> : <><Volume2 className="h-3 w-3" /> Play</>}
+        </button>
+      </div>
+
+      {/* YouTube iframe — must stay visible per YouTube ToS */}
+      <AnimatePresence>
+        {on && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4">
+              <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16/9" }}>
+                <iframe
+                  src="https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&rel=0&modestbranding=1"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full rounded-xl"
+                  title="Lo-Fi Beats — Lofi Girl 24/7"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground/40 text-center mt-2">
+                Lofi Girl 24/7 · Music continues while you work
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ── Main component ─────────────────────────────────── */
 export default function FocusMode({ studyPacks }: FocusModeProps) {
   const [phase, setPhase] = useState<Phase>("setup");
@@ -117,6 +196,9 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
   // Complete
   const [recap, setRecap] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Music
+  const [musicOn, setMusicOn] = useState(false);
 
   const isTransitioning = useRef(false);
 
@@ -407,6 +489,9 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
           )}
         </AnimatePresence>
 
+        {/* Lo-Fi music player */}
+        <LoFiPlayer on={musicOn} onToggle={() => setMusicOn((v) => !v)} />
+
         {/* History panel */}
         <AnimatePresence>
           {showHistory && (
@@ -567,6 +652,9 @@ export default function FocusMode({ studyPacks }: FocusModeProps) {
             })}
           </div>
         )}
+
+        {/* Lo-Fi music player */}
+        <LoFiPlayer on={musicOn} onToggle={() => setMusicOn((v) => !v)} />
 
         {/* End session */}
         <button

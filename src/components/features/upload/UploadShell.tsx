@@ -2,21 +2,23 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { FileText, Type, Link, Image, BookOpen } from "lucide-react";
+import { FileText, Type, Link, Image, BookOpen, Presentation } from "lucide-react";
 import FileUploadZone from "./FileUploadZone";
 import TextPasteForm from "./TextPasteForm";
 import UrlImportForm from "./UrlImportForm";
 import ImageUploadZone from "./ImageUploadZone";
 import NotionGDocsForm from "./NotionGDocsForm";
+import PptxUploadZone from "./PptxUploadZone";
 
-type Method = "pdf" | "text" | "url" | "image" | "import";
+type Method = "pdf" | "pptx" | "text" | "url" | "image" | "import";
 
 const methods = [
-  { id: "pdf" as Method, label: "PDF", description: "Upload a PDF file", icon: FileText },
-  { id: "image" as Method, label: "Photo", description: "Handwritten notes or photos", icon: Image },
-  { id: "text" as Method, label: "Text", description: "Paste your notes", icon: Type },
-  { id: "url" as Method, label: "YouTube / Web", description: "Import from a URL", icon: Link },
-  { id: "import" as Method, label: "Notion / GDocs", description: "Import from apps", icon: BookOpen },
+  { id: "pdf" as Method,    label: "PDF",            description: "Upload a PDF file",            icon: FileText },
+  { id: "pptx" as Method,   label: "Slides",          description: "PowerPoint lecture slides",    icon: Presentation },
+  { id: "image" as Method,  label: "Photo",           description: "Handwritten notes or photos",  icon: Image },
+  { id: "text" as Method,   label: "Text",            description: "Paste your notes",             icon: Type },
+  { id: "url" as Method,    label: "YouTube / Web",   description: "Import from a URL",            icon: Link },
+  { id: "import" as Method, label: "Notion / GDocs",  description: "Import from apps",             icon: BookOpen },
 ];
 
 export default function UploadShell() {
@@ -66,10 +68,11 @@ export default function UploadShell() {
           exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         >
-          {method === "pdf" && <FileUploadZone />}
-          {method === "text" && <TextPasteForm />}
-          {method === "image" && <ImageUploadZone />}
-          {method === "url" && <UrlImportForm />}
+          {method === "pdf"    && <FileUploadZone />}
+          {method === "pptx"   && <PptxUploadZone />}
+          {method === "text"   && <TextPasteForm />}
+          {method === "image"  && <ImageUploadZone />}
+          {method === "url"    && <UrlImportForm />}
           {method === "import" && <NotionGDocsForm />}
         </motion.div>
       </AnimatePresence>

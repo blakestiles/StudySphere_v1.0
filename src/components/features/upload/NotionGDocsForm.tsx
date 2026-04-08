@@ -56,6 +56,7 @@ export default function NotionGDocsForm() {
       if (!res.ok) { toast.error(data.error || "Import failed"); return; }
       setNotionDone(true);
       toast.success("Notion page imported successfully!");
+      if (data.warning) toast.info(data.warning);
       setTimeout(() => { setNotionToken(""); setNotionPageId(""); setNotionDone(false); }, 2000);
     } catch {
       toast.error("Import failed. Please try again.");

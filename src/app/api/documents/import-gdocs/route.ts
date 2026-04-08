@@ -104,8 +104,8 @@ export async function POST(request: Request) {
       fileType: "gdocs", rawText: text.slice(0, 200_000), status: "ready",
     });
 
-    revalidateTag(TAGS.documents(session.user.id), "");
-    revalidateTag(TAGS.dashboard(session.user.id), "");
+    revalidateTag(TAGS.documents(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({ message: "Google Doc imported successfully", document: doc }, { status: 201 });
   } catch (error: any) {
     console.error("Google Docs import error:", error);

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Document from "@/models/Document";
 import { extractTextWithPageMarkers } from "@/lib/pdf";
+import { extractTextFromPPTX, isPPTXBuffer } from "@/lib/pptx";
 import { TAGS } from "@/lib/data-cache";
 import client from "@/lib/claude";
 
@@ -35,9 +36,12 @@ export async function POST(request: Request) {
 
       const isImage = ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type);
       const isPDF = file.type === "application/pdf";
+      const isPPTX =
+        file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+        file.name.toLowerCase().endsWith(".pptx");
 
-      if (!isImage && !isPDF) {
-        return NextResponse.json({ error: "Only PDF or image files are supported" }, { status: 400 });
+      if (!isImage && !isPDF && !isPPTX) {
+        return NextResponse.json({ error: "Only PDF, PPTX, or image files are supported" }, { status: 400 });
       }
 
       let rawText = "";
@@ -67,10 +71,44 @@ export async function POST(request: Request) {
           status: "ready",
         });
 
-        revalidateTag(TAGS.documents(session.user.id), "");
-        revalidateTag(TAGS.dashboard(session.user.id), "");
+        revalidateTag(TAGS.documents(session.user.id));
+        revalidateTag(TAGS.dashboard(session.user.id));
         return NextResponse.json(
           { message: "Document uploaded successfully", document: doc },
+          { status: 201 }
+        );
+      }
+
+      if (isPPTX) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+
+        // Validate ZIP magic bytes (PPTX is a ZIP — PK\x03\x04)
+        if (!isPPTXBuffer(buffer)) {
+          return NextResponse.json({ error: "File does not appear to be a valid PPTX" }, { status: 400 });
+        }
+
+        let rawText: string;
+        try {
+          rawText = extractTextFromPPTX(buffer);
+        } catch {
+          return NextResponse.json({ error: "Could not extract text from presentation" }, { status: 400 });
+        }
+
+        const title = (formData.get("title") as string) || file.name.replace(/\.pptx$/i, "");
+
+        const doc = await Document.create({
+          userId: session.user.id,
+          title,
+          originalFilename: file.name,
+          fileType: "pptx",
+          rawText,
+          status: "ready",
+        });
+
+        revalidateTag(TAGS.documents(session.user.id));
+        revalidateTag(TAGS.dashboard(session.user.id));
+        return NextResponse.json(
+          { message: "Presentation imported successfully", document: doc },
           { status: 201 }
         );
       }
@@ -110,8 +148,8 @@ export async function POST(request: Request) {
           originalFilename: file.name, fileType: "image",
           rawText, status: "ready",
         });
-        revalidateTag(TAGS.documents(session.user.id), "");
-        revalidateTag(TAGS.dashboard(session.user.id), "");
+        revalidateTag(TAGS.documents(session.user.id));
+        revalidateTag(TAGS.dashboard(session.user.id));
         return NextResponse.json({ message: "Image processed successfully", document: doc }, { status: 201 });
       }
     } else {
@@ -139,8 +177,8 @@ export async function POST(request: Request) {
         status: "ready",
       });
 
-      revalidateTag(TAGS.documents(session.user.id), "");
-      revalidateTag(TAGS.dashboard(session.user.id), "");
+      revalidateTag(TAGS.documents(session.user.id));
+      revalidateTag(TAGS.dashboard(session.user.id));
       return NextResponse.json(
         { message: "Document created successfully", document: doc },
         { status: 201 }

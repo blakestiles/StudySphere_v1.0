@@ -7,6 +7,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import {
   FileText, Trash2, Download, ArrowLeft, Plus, Loader2, BookOpen, X,
+  Presentation, Printer,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import TextShimmer from "@/components/ui/text-shimmer";
@@ -61,6 +62,9 @@ export default function CheatSheetsPage() {
   const [selectedPackId, setSelectedPackId] = useState("");
   const [pages, setPages] = useState(1);
   const [generating, setGenerating] = useState(false);
+
+  // Export state
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   // Delete state
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -140,6 +144,29 @@ export default function CheatSheetsPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleExportPptx(sheet: CheatSheetItem) {
+    setExportingId(sheet._id);
+    try {
+      const res = await fetch(`/api/cheat-sheets/${sheet._id}/export?format=pptx`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${sheet.title}.pptx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to export PPTX");
+    } finally {
+      setExportingId(null);
+    }
+  }
+
+  function handlePrint(sheet: CheatSheetItem) {
+    window.open(`/cheat-sheets/${sheet._id}/print`, "_blank");
+  }
+
   // ── Viewer ────────────────────────────────────────────────────────────────
 
   if (viewing) {
@@ -154,13 +181,30 @@ export default function CheatSheetsPage() {
             <ArrowLeft className="h-3.5 w-3.5" />
             All Cheat Sheets
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
               onClick={() => handleDownload(viewing)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border transition-all"
             >
               <Download className="h-3.5 w-3.5" />
               Download .md
+            </button>
+            <button
+              onClick={() => handleExportPptx(viewing)}
+              disabled={exportingId === viewing._id}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border disabled:opacity-60 transition-all"
+            >
+              {exportingId === viewing._id
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Presentation className="h-3.5 w-3.5" />}
+              Export PPTX
+            </button>
+            <button
+              onClick={() => handlePrint(viewing)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border transition-all"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Print PDF
             </button>
             <button
               onClick={() => setDeleteId(viewing._id)}
@@ -319,9 +363,26 @@ export default function CheatSheetsPage() {
                     <button
                       onClick={() => handleDownload(sheet)}
                       className="flex h-7 w-7 items-center justify-center rounded-xl border border-border/50 text-muted-foreground/50 hover:border-border hover:text-foreground transition-all"
-                      aria-label="Download"
+                      aria-label="Download .md"
                     >
                       <Download className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleExportPptx(sheet)}
+                      disabled={exportingId === sheet._id}
+                      className="flex h-7 w-7 items-center justify-center rounded-xl border border-border/50 text-muted-foreground/50 hover:border-border hover:text-foreground disabled:opacity-60 transition-all"
+                      aria-label="Export PPTX"
+                    >
+                      {exportingId === sheet._id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Presentation className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => handlePrint(sheet)}
+                      className="flex h-7 w-7 items-center justify-center rounded-xl border border-border/50 text-muted-foreground/50 hover:border-border hover:text-foreground transition-all"
+                      aria-label="Print PDF"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setDeleteId(sheet._id)}

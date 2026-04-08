@@ -60,7 +60,7 @@ export async function POST(
     if (sourceFlashcards.length > 0) {
       await Flashcard.insertMany(sourceFlashcards.map(f => ({
         studyPackId: clonedPack._id,
-        topicId: topicIdMap.get(f.topicId?.toString() || "") || f.topicId,
+        topicId: (f.topicId && topicIdMap.get(f.topicId.toString())) ?? f.topicId,
         question: f.question,
         answer: f.answer,
         difficulty: f.difficulty,
@@ -72,7 +72,7 @@ export async function POST(
     if (sourceQuizzes.length > 0) {
       await QuizQuestion.insertMany(sourceQuizzes.map(q => ({
         studyPackId: clonedPack._id,
-        topicId: topicIdMap.get(q.topicId?.toString() || "") || q.topicId,
+        topicId: (q.topicId && topicIdMap.get(q.topicId.toString())) ?? q.topicId,
         question: q.question,
         options: q.options,
         correctAnswer: q.correctAnswer,

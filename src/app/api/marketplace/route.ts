@@ -17,21 +17,35 @@ export async function GET() {
       .limit(50)
       .lean();
 
-    const enriched = await Promise.all(packs.map(async (pack) => {
-      const [topicCount, author] = await Promise.all([
-        Topic.countDocuments({ studyPackId: pack._id }),
-        User.findById(pack.userId).select("name").lean(),
-      ]);
-      return {
-        _id: String(pack._id),
-        title: pack.title,
-        shareToken: pack.shareToken,
-        summary: (pack.summaries as any)?.short || "",
-        topicCount,
-        authorName: (author as any)?.name || "Anonymous",
-        isOwnPack: pack.userId.toString() === session!.user!.id,
-        createdAt: pack.createdAt,
-      };
+    if (packs.length === 0) return NextResponse.json([]);
+
+    const packIds = packs.map((p) => p._id);
+    const userIds = [...new Set(packs.map((p) => p.userId.toString()))];
+
+    // Batch: one aggregate for all topic counts, one query for all authors
+    const [topicCountRows, authors] = await Promise.all([
+      Topic.aggregate([
+        { $match: { studyPackId: { $in: packIds } } },
+        { $group: { _id: "$studyPackId", count: { $sum: 1 } } },
+      ]),
+      User.find({ _id: { $in: userIds } }).select("name").lean(),
+    ]);
+
+    const topicCountMap = Object.fromEntries(
+      topicCountRows.map((r: { _id: unknown; count: number }) => [String(r._id), r.count])
+    );
+    const authorMap = Object.fromEntries(
+      (authors as { _id: unknown; name?: string }[]).map((u) => [String(u._id), u.name || "Anonymous"])
+    );
+
+    const enriched = packs.map((pack) => ({
+      _id: String(pack._id),
+      title: pack.title,
+      summary: (pack.summaries as any)?.short || "",
+      topicCount: topicCountMap[String(pack._id)] ?? 0,
+      authorName: authorMap[pack.userId.toString()] ?? "Anonymous",
+      isOwnPack: pack.userId.toString() === session!.user!.id,
+      createdAt: pack.createdAt,
     }));
 
     return NextResponse.json(enriched);

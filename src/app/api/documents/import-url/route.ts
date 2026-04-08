@@ -4,8 +4,39 @@ import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Document from "@/models/Document";
 import { TAGS } from "@/lib/data-cache";
+import dns from "dns";
 
 class UserFacingError extends Error {}
+
+function isPrivateIP(ip: string): boolean {
+  // Block loopback, link-local (AWS IMDS), RFC-1918, and IPv6 locals
+  return /^127\./.test(ip) ||
+    /^169\.254\./.test(ip) ||
+    /^10\./.test(ip) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+    /^192\.168\./.test(ip) ||
+    ip === "::1" ||
+    ip.startsWith("fc") ||
+    ip.startsWith("fd");
+}
+
+async function assertPublicHost(hostname: string): Promise<void> {
+  // NOTE: DNS pre-check does not prevent DNS rebinding attacks — the subsequent
+  // fetch() re-resolves the hostname and could land on a different IP. Full
+  // mitigation requires a proxy with connect-time IP inspection (e.g. undici
+  // connect hooks). Acceptable risk for this context.
+  const lower = hostname.toLowerCase();
+  if (lower === "localhost" || lower.endsWith(".local") || lower.endsWith(".internal")) {
+    throw new UserFacingError("URL not allowed");
+  }
+  let address: string;
+  try {
+    ({ address } = await dns.promises.lookup(hostname));
+  } catch {
+    throw new UserFacingError("Could not reach that URL. Check the address and try again.");
+  }
+  if (isPrivateIP(address)) throw new UserFacingError("URL not allowed");
+}
 
 function extractYouTubeId(url: string): string | null {
   const pattern = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/;
@@ -96,12 +127,33 @@ async function fetchYouTubeTranscript(videoId: string): Promise<{ title: string;
   return { title, text: lines.join(" ") };
 }
 
+const MAX_FETCH_BYTES = 5 * 1024 * 1024; // 5MB cap before processing
+
 async function fetchWebPage(url: string): Promise<{ title: string; text: string }> {
+  const { hostname } = new URL(url);
+  await assertPublicHost(hostname);
+
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; StudySphere/1.0)" },
   });
   if (!res.ok) throw new UserFacingError(`Failed to fetch URL: ${res.status}`);
-  const html = await res.text();
+
+  // Cap response size before reading into memory
+  if (!res.body) throw new UserFacingError("Failed to read response from URL");
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    chunks.push(value);
+    if (totalBytes > MAX_FETCH_BYTES) { reader.cancel(); break; }
+  }
+  const merged = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
+  const html = new TextDecoder().decode(merged);
 
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : url;
@@ -180,8 +232,8 @@ export async function POST(request: Request) {
       fileType: "url", rawText: text, status: "ready",
     });
 
-    revalidateTag(TAGS.documents(session.user.id), "");
-    revalidateTag(TAGS.dashboard(session.user.id), "");
+    revalidateTag(TAGS.documents(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({ message: "Content imported successfully", document: doc }, { status: 201 });
   } catch (error: any) {
     const isUserError = error instanceof UserFacingError;

@@ -49,6 +49,8 @@ export async function POST(request: Request) {
     const blocksRes = await fetch(`https://api.notion.com/v1/blocks/${formattedId}/children?page_size=100`, { headers });
     if (!blocksRes.ok) return NextResponse.json({ error: "Could not read page content" }, { status: 400 });
     const blocksData = await blocksRes.json();
+    // Note: Notion API does not inline nested blocks — only top-level block text is extracted.
+    // Deeply nested content (toggle children, sub-bullets) is not fetched.
     const text = extractTextFromBlocks(blocksData.results || []);
 
     if (!text.trim()) return NextResponse.json({ error: "Page appears to be empty" }, { status: 400 });
@@ -59,9 +61,13 @@ export async function POST(request: Request) {
       fileType: "notion", rawText: text, status: "ready",
     });
 
-    revalidateTag(TAGS.documents(session.user.id), "");
-    revalidateTag(TAGS.dashboard(session.user.id), "");
-    return NextResponse.json({ message: "Notion page imported successfully", document: doc }, { status: 201 });
+    revalidateTag(TAGS.documents(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id));
+    return NextResponse.json({
+      message: "Notion page imported successfully",
+      document: doc,
+      warning: "Only top-level block content was imported. Nested toggle/sub-bullet content is not included.",
+    }, { status: 201 });
   } catch (error: any) {
     console.error("Notion import error:", error);
     return NextResponse.json({ error: "Import failed" }, { status: 500 });

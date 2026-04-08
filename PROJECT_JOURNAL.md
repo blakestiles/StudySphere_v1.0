@@ -115,6 +115,22 @@ With all features implemented and functional, I undertook a comprehensive UI red
 
 **Profile overhaul:** I completely rebuilt the Profile page, replacing all dark-only components with a design-system-compliant layout. The new profile header uses an amber-gradient avatar with an emerald online indicator dot, inline edit mode with `AnimatePresence` for smooth transitions, and a member-since chip alongside an active-streak badge. A new **streak hero strip** shows the current streak (with an orange flame icon and glow), total study time, and longest streak in a horizontal layout. The stats grid was reorganized from a mixed 3-column layout (which embedded a `GlowingStarsBackgroundCard` in the center) into a clean 4-column grid with color-coded top bar gradients per metric. The achievements section replaced emoji icons and `BlurFade` animations with Lucide icons in amber-accented badge cards — unlocked achievements get an amber glow border and a thin amber light streak at the top; locked ones show a padlock icon. The security section uses native inputs with a `Shield` accent. The page now has a `TextShimmer` title matching all other pages.
 
+### Week 12: Security Hardening, PPTX Import, Cheat Sheet Exports & Lo-Fi Focus Music (Completed Apr. 7, 2026)
+
+This session covered a comprehensive code review pass, targeted security fixes, and three new features.
+
+**Security and correctness fixes (code review pass):**
+I performed a thorough review of the import and marketplace API routes and resolved several issues. In `import-url/route.ts`, I patched an SSRF vulnerability by adding DNS pre-resolution via `dns.promises.lookup` and a `isPrivateIP()` guard that blocks requests resolving to RFC 1918, loopback, and link-local addresses. I also added a `localhost`/`.local`/`.internal` hostname check. The streaming response reader was fixed from an O(n²) `reduce`-based concat to a pre-allocated `Uint8Array` approach tracking `totalBytes` across chunks, and an unguarded `res.body?.getReader()` optional chain was replaced with an explicit null guard to prevent silently empty responses. The DNS pre-check limitation (it does not prevent DNS rebinding attacks) is documented with a comment. In the marketplace routes, I replaced an N+1 query pattern (one `Topic.countDocuments()` call per study pack) with a single MongoDB aggregate pipeline grouped by `studyPackId`, and a separate batched `User.find()` for author names. I also removed a `shareToken` field that was being leaked in the marketplace GET response. Across all import routes (`import-url`, `import-notion`, `import-gdocs`, `upload`), I fixed incorrect `revalidateTag` calls that were passing a spurious second `""` argument — `revalidateTag` accepts exactly one string argument.
+
+**PowerPoint / Slides Import:**
+I added full `.pptx` upload support to the document ingestion pipeline. PPTX files are ZIP archives, so I used `adm-zip` to extract the `ppt/slides/slideN.xml` entries, sorted them numerically, then used regex to extract `<a:t>` text runs and identify title placeholders (`<p:ph type="title|ctrTitle">`). Each slide is formatted as `## Slide N: Title\nbody text`, giving the AI clean structure for study pack generation. Magic byte validation (`0x50 0x4B 0x03 0x04`) guards against renamed non-PPTX files. The new `PptxUploadZone` component mirrors the existing `FileUploadZone` design and appears as a "Slides" tab in `UploadShell`. The `Document` model's `fileType` enum was extended to include `"pptx"`.
+
+**Cheat Sheet PPTX Export and PDF Print:**
+I added two export options to the cheat sheets page. The PPTX export route (`/api/cheat-sheets/[id]/export`) runs on the server, parses the Markdown cheat sheet into sections (headings become slide titles, list items become bullets), and generates a PowerPoint file using `pptxgenjs` with a dark background (`#1a1a2e`), amber titles (`#f59e0b`), and a maximum of 12 bullets per slide with `(cont.)` overflow slides. The file is streamed back as a binary download. The PDF print route opens a new server-rendered page (`/cheat-sheets/[id]/print`) that inlines all CSS, renders the Markdown with Georgia serif typography, and auto-triggers `window.print()` via a `DOMContentLoaded` + 300ms delay (avoiding a race condition where styles hadn't applied yet under the `"load"` event approach).
+
+**Lo-Fi Beats music player in Focus Mode:**
+I added a `LoFiPlayer` component inside `FocusMode.tsx` that embeds the Lofi Girl 24/7 YouTube stream (`jfKfPfyJRdk`) as a visible iframe (required by YouTube ToS — hidden autoplay is not permitted). The player shows a compact violet-accented card with a Play/Stop toggle button and three animated equalizer bars (CSS keyframe stagger) that pulse when music is active. `AnimatePresence` handles smooth iframe expand/collapse. A `musicOn` boolean in `FocusMode` state persists the player state across the setup → active → complete phase transitions so music doesn't stop when the timer starts.
+
 ---
 
 ## 2. Challenges
@@ -173,7 +189,18 @@ None. All Week 5-10 deliverables are fully implemented and functional. The appli
 - **Evaluation:** No critical bugs, response times acceptable under normal load.
 - **Deliverables:** Bug fixes, code pushed to GitHub
 
-**Week 12 — Deployment & Documentation (target: Apr. 6, 2026)**
+**Week 12 — Security Hardening, PPTX Import & New Features (COMPLETED Apr. 7, 2026)**
+- ✅ SSRF protection in URL import (DNS pre-resolution + private IP blocklist)
+- ✅ Fixed O(n²) streaming concat → pre-allocated Uint8Array
+- ✅ Fixed N+1 topic query in marketplace → MongoDB aggregate
+- ✅ Removed shareToken leak from marketplace GET response
+- ✅ Fixed all `revalidateTag` calls (spurious second argument removed)
+- ✅ PowerPoint/Slides Import (adm-zip XML parsing, slide text extraction, magic byte validation)
+- ✅ Cheat Sheet PPTX Export (pptxgenjs, dark theme, amber titles, overflow slides)
+- ✅ Cheat Sheet PDF Print (server-rendered print page, DOMContentLoaded + 300ms delay)
+- ✅ Lo-Fi Beats music player in Focus Mode (YouTube iframe embed, animated equalizer, AnimatePresence)
+
+**Week 13 — Deployment & Documentation (target: Apr. 13, 2026)**
 - Deploy to Vercel with production environment configuration
 - Configure production MongoDB Atlas cluster with proper access controls
 - Set up environment variables (MONGODB_URI, NEXTAUTH_SECRET, ANTHROPIC_API_KEY)
@@ -181,7 +208,7 @@ None. All Week 5-10 deliverables are fully implemented and functional. The appli
 - **Evaluation:** Application accessible via public URL, all features work in production.
 - **Deliverables:** Live deployment URL, documentation, code pushed to GitHub
 
-**Week 13 — Final Submission (target: Apr. 6, 2026)**
+**Week 14 — Final Submission (target: Apr. 13, 2026)**
 - Final testing in production environment
 - Project presentation preparation
 - Submit final deliverables and documentation
