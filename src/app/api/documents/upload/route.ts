@@ -80,8 +80,8 @@ export async function POST(request: Request) {
           status: "ready",
         });
 
-        revalidateTag(TAGS.documents(session.user.id));
-        revalidateTag(TAGS.dashboard(session.user.id));
+        revalidateTag(TAGS.documents(session.user.id), "");
+        revalidateTag(TAGS.dashboard(session.user.id), "");
         return NextResponse.json(
           { message: "Document uploaded successfully", document: doc },
           { status: 201 }
@@ -114,8 +114,8 @@ export async function POST(request: Request) {
           status: "ready",
         });
 
-        revalidateTag(TAGS.documents(session.user.id));
-        revalidateTag(TAGS.dashboard(session.user.id));
+        revalidateTag(TAGS.documents(session.user.id), "");
+        revalidateTag(TAGS.dashboard(session.user.id), "");
         return NextResponse.json(
           { message: "Presentation imported successfully", document: doc },
           { status: 201 }
@@ -157,8 +157,8 @@ export async function POST(request: Request) {
           originalFilename: file.name, fileType: "image",
           rawText, status: "ready",
         });
-        revalidateTag(TAGS.documents(session.user.id));
-        revalidateTag(TAGS.dashboard(session.user.id));
+        revalidateTag(TAGS.documents(session.user.id), "");
+        revalidateTag(TAGS.dashboard(session.user.id), "");
         return NextResponse.json({ message: "Image processed successfully", document: doc }, { status: 201 });
       }
     } else {
@@ -186,8 +186,8 @@ export async function POST(request: Request) {
         status: "ready",
       });
 
-      revalidateTag(TAGS.documents(session.user.id));
-      revalidateTag(TAGS.dashboard(session.user.id));
+      revalidateTag(TAGS.documents(session.user.id), "");
+      revalidateTag(TAGS.dashboard(session.user.id), "");
       return NextResponse.json(
         { message: "Document created successfully", document: doc },
         { status: 201 }

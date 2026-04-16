@@ -61,8 +61,8 @@ export async function POST(request: Request) {
       fileType: "notion", rawText: text, status: "ready",
     });
 
-    revalidateTag(TAGS.documents(session.user.id));
-    revalidateTag(TAGS.dashboard(session.user.id));
+    revalidateTag(TAGS.documents(session.user.id), "");
+    revalidateTag(TAGS.dashboard(session.user.id), "");
     return NextResponse.json({
       message: "Notion page imported successfully",
       document: doc,
