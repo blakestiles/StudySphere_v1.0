@@ -5,6 +5,7 @@ import connectDB from "@/lib/db";
 import Document from "@/models/Document";
 import { TAGS } from "@/lib/data-cache";
 import { extractTextFromPDF } from "@/lib/pdf";
+import { readResponseBytesCapped, readResponseTextCapped } from "@/lib/fetch-utils";
 
 const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
       const contentType = res.headers.get("content-type") ?? "";
-      text = await res.text();
+      text = await readResponseTextCapped(res);
       if (contentType.includes("text/html") || text.trimStart().startsWith("<!DOCTYPE") || text.trimStart().startsWith("<html")) {
         return NextResponse.json({
           error: "Could not access document. Make sure it's shared publicly ('Anyone with the link can view').",
@@ -76,11 +77,11 @@ export async function POST(request: Request) {
       const contentType = res.headers.get("content-type") ?? "";
 
       if (contentType.includes("application/pdf")) {
-        const arrayBuf = await res.arrayBuffer();
-        text = await extractTextFromPDF(Buffer.from(arrayBuf));
+        const bytes = await readResponseBytesCapped(res);
+        text = await extractTextFromPDF(Buffer.from(bytes));
         if (!text.trim()) return NextResponse.json({ error: "Could not extract text from PDF" }, { status: 400 });
       } else if (contentType.includes("text/plain")) {
-        text = await res.text();
+        text = await readResponseTextCapped(res);
         if (!text.trim()) return NextResponse.json({ error: "File appears to be empty" }, { status: 400 });
       } else if (contentType.includes("text/html")) {
         return NextResponse.json({

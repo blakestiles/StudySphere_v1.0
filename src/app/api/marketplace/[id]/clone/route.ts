@@ -23,6 +23,14 @@ export async function POST(
       return NextResponse.json({ error: "Pack not found or not public" }, { status: 404 });
     }
 
+    const alreadyCloned = await StudyPack.findOne({
+      userId: session.user.id,
+      clonedFrom: sourcePack._id,
+    });
+    if (alreadyCloned) {
+      return NextResponse.json({ error: "You already cloned this pack" }, { status: 409 });
+    }
+
     const clonedDoc = await Document.create({
       userId: session.user.id,
       title: `${sourcePack.title} (Cloned)`,
@@ -39,6 +47,7 @@ export async function POST(
       mindMap: sourcePack.mindMap,
       status: "ready",
       isPublic: false,
+      clonedFrom: sourcePack._id,
     });
 
     const sourceTopics = await Topic.find({ studyPackId: id }).lean();

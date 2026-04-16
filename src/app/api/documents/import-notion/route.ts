@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       warning: "Only top-level block content was imported. Nested toggle/sub-bullet content is not included.",
     }, { status: 201 });
   } catch (error: any) {
-    console.error("Notion import error:", error);
+    console.error("Notion import error:", error?.message ?? "unknown error");
     return NextResponse.json({ error: "Import failed" }, { status: 500 });
   }
 }

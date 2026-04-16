@@ -13,6 +13,7 @@ const StudyPackSchema = new Schema(
     status: { type: String, enum: ["generating", "ready", "error"], default: "generating" },
     shareToken: { type: String, unique: true, sparse: true },
     isPublic: { type: Boolean, default: false },
+    clonedFrom: { type: Schema.Types.ObjectId, ref: "StudyPack", default: null },
     examDate: { type: Date, default: null },
   },
   { timestamps: true }

@@ -74,8 +74,8 @@ export async function DELETE(
     ]);
     await StudyPack.findByIdAndDelete(id);
 
-    revalidateTag(TAGS.studyPacks(session.user.id), "");
-    revalidateTag(TAGS.dashboard(session.user.id), "");
+    revalidateTag(TAGS.studyPacks(session.user.id));
+    revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete study pack error:", error);

@@ -5,6 +5,7 @@ import connectDB from "@/lib/db";
 import Document from "@/models/Document";
 import { TAGS } from "@/lib/data-cache";
 import dns from "dns";
+import { readResponseBytesCapped } from "@/lib/fetch-utils";
 
 class UserFacingError extends Error {}
 
@@ -59,6 +60,7 @@ async function fetchYouTubeTranscript(videoId: string): Promise<{ title: string;
         context: { client: { clientName: "ANDROID", clientVersion: "20.10.38" } },
         videoId,
       }),
+      signal: AbortSignal.timeout(15_000),
     }
   );
 
@@ -92,6 +94,7 @@ async function fetchYouTubeTranscript(videoId: string): Promise<{ title: string;
 
   const capRes = await fetch(track.baseUrl, {
     headers: { "User-Agent": YT_ANDROID_UA },
+    signal: AbortSignal.timeout(15_000),
   });
   const capXml = await capRes.text();
 
@@ -129,8 +132,6 @@ async function fetchYouTubeTranscript(videoId: string): Promise<{ title: string;
   return { title, text: lines.join(" ") };
 }
 
-const MAX_FETCH_BYTES = 5 * 1024 * 1024; // 5MB cap before processing
-
 async function fetchWebPage(url: string): Promise<{ title: string; text: string }> {
   const { hostname } = new URL(url);
   await assertPublicHost(hostname);
@@ -140,22 +141,8 @@ async function fetchWebPage(url: string): Promise<{ title: string; text: string 
   });
   if (!res.ok) throw new UserFacingError(`Failed to fetch URL: ${res.status}`);
 
-  // Cap response size before reading into memory
-  if (!res.body) throw new UserFacingError("Failed to read response from URL");
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    totalBytes += value.byteLength;
-    chunks.push(value);
-    if (totalBytes > MAX_FETCH_BYTES) { reader.cancel(); break; }
-  }
-  const merged = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const c of chunks) { merged.set(c, offset); offset += c.byteLength; }
-  const html = new TextDecoder().decode(merged);
+  const bytes = await readResponseBytesCapped(res);
+  const html = new TextDecoder().decode(bytes);
 
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : url;
@@ -238,6 +225,9 @@ export async function POST(request: Request) {
     revalidateTag(TAGS.dashboard(session.user.id));
     return NextResponse.json({ message: "Content imported successfully", document: doc }, { status: 201 });
   } catch (error: any) {
+    if (error?.name === "TimeoutError") {
+      return NextResponse.json({ error: "Request timed out. Please try again." }, { status: 504 });
+    }
     const isUserError = error instanceof UserFacingError;
     if (!isUserError) console.error("URL import error:", error);
     return NextResponse.json(
