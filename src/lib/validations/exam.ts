@@ -10,25 +10,17 @@ export const generateExamSchema = z.object({
 export type GenerateExamInput = z.infer<typeof generateExamSchema>;
 
 export const submitExamSchema = z.object({
+  examId: z.string().min(1),
   studyPackId: z.string().min(1),
-  questions: z.array(
-    z.object({
-      questionText: z.string(),
-      options: z.array(z.string()),
-      correctAnswer: z.number(),
-      difficulty: z.string(),
-    })
-  ),
   responses: z.array(
     z.object({
-      questionIndex: z.number(),
-      selectedAnswer: z.number(),
-      isCorrect: z.boolean(),
-      timeSpent: z.number(),
+      questionIndex: z.number().int().min(0),
+      selectedAnswer: z.number().int().min(0),
+      timeSpent: z.number().min(0),
     })
   ),
-  duration: z.number(),
-  timeTaken: z.number(),
+  duration: z.number().min(0),
+  timeTaken: z.number().min(0),
   proctored: z.boolean(),
 });
 

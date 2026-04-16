@@ -8,7 +8,7 @@ export const createThreadSchema = z.object({
 export type CreateThreadInput = z.infer<typeof createThreadSchema>;
 
 export const sendMessageSchema = z.object({
-  content: z.string().min(1),
+  content: z.string().min(1).max(10000),
   eli5: z.boolean().optional(),
 });
 

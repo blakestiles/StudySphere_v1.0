@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import Annotation from "@/models/Annotation";
+import Document from "@/models/Document";
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,7 +54,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (typeof startOffset !== "number" || typeof endOffset !== "number" ||
+        startOffset < 0 || endOffset < 0 || endOffset < startOffset) {
+      return NextResponse.json({ error: "Invalid offset values" }, { status: 400 });
+    }
+
+    if (typeof selectedText === "string" && selectedText.length > 10000) {
+      return NextResponse.json({ error: "selectedText too long" }, { status: 400 });
+    }
+    if (typeof noteText === "string" && noteText.length > 10000) {
+      return NextResponse.json({ error: "noteText too long" }, { status: 400 });
+    }
+
     await connectDB();
+
+    // Verify document ownership
+    const doc = await Document.findOne({ _id: documentId, userId: session.user.id }).lean();
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
 
     const annotation = await Annotation.create({
       userId: session.user.id,

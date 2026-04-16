@@ -138,6 +138,7 @@ async function fetchWebPage(url: string): Promise<{ title: string; text: string 
 
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; StudySphere/1.0)" },
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new UserFacingError(`Failed to fetch URL: ${res.status}`);
 

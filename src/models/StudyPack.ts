@@ -19,5 +19,10 @@ const StudyPackSchema = new Schema(
   { timestamps: true }
 );
 
+StudyPackSchema.index(
+  { userId: 1, clonedFrom: 1 },
+  { unique: true, partialFilterExpression: { clonedFrom: { $type: "objectId" } } }
+);
+
 const StudyPack = models.StudyPack || mongoose.model("StudyPack", StudyPackSchema);
 export default StudyPack;

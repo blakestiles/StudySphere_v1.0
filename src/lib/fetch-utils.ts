@@ -8,9 +8,15 @@ export async function readResponseBytesCapped(res: Response): Promise<Uint8Array
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    const remaining = MAX_FETCH_BYTES - totalBytes;
+    if (value.byteLength > remaining) {
+      chunks.push(value.slice(0, remaining));
+      totalBytes = MAX_FETCH_BYTES;
+      reader.cancel();
+      break;
+    }
     totalBytes += value.byteLength;
     chunks.push(value);
-    if (totalBytes > MAX_FETCH_BYTES) { reader.cancel(); break; }
   }
   const merged = new Uint8Array(totalBytes);
   let offset = 0;

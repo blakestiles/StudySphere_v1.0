@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       const res = await fetch(exportUrl, {
         headers: { "User-Agent": BROWSER_UA, "Accept": "text/plain,text/html,*/*" },
         redirect: "follow",
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) {
         return NextResponse.json({
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
       const res = await fetch(downloadUrl, {
         headers: { "User-Agent": BROWSER_UA, "Accept": "*/*" },
         redirect: "follow",
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) {
         return NextResponse.json({

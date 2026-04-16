@@ -3,12 +3,21 @@ import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = await checkRateLimit(`change-pw:${session.user.id}`, 5, 60_000 * 15);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
     const { currentPassword, newPassword } = await request.json();

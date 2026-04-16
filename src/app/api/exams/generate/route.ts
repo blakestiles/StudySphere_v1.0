@@ -6,6 +6,7 @@ import client from "@/lib/claude";
 import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
 import Document from "@/models/Document";
+import ExamAttempt from "@/models/ExamAttempt";
 import { generateExamSchema } from "@/lib/validations/exam";
 
 export async function POST(request: Request) {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rl = checkRateLimit(`exam-generate:${session.user.id}`, 5, 60_000);
+    const rl = await checkRateLimit(`exam-generate:${session.user.id}`, 5, 60_000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please wait before generating again." },
@@ -101,7 +102,21 @@ Rules:
 
     const questions = JSON.parse(jsonMatch[0]);
 
-    return NextResponse.json({ questions, duration }, { status: 200 });
+    // Store questions server-side in a pending exam attempt
+    const pendingAttempt = await ExamAttempt.create({
+      userId: session.user.id,
+      studyPackId,
+      questions,
+      responses: [],
+      score: 0,
+      totalQuestions: questions.length,
+      difficulty,
+      duration,
+      timeTaken: 0,
+      status: "pending",
+    });
+
+    return NextResponse.json({ examId: String(pendingAttempt._id), questions, duration }, { status: 200 });
   } catch (error) {
     console.error("Exam generation error:", error);
     const message =

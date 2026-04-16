@@ -6,6 +6,7 @@ import Document from "@/models/Document";
 import { extractTextWithPageMarkers } from "@/lib/pdf";
 import { extractTextFromPPTX, isPPTXBuffer } from "@/lib/pptx";
 import { TAGS } from "@/lib/data-cache";
+import { checkRateLimit } from "@/lib/rate-limit";
 import client from "@/lib/claude";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -15,6 +16,14 @@ export async function POST(request: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = await checkRateLimit(`upload:${session.user.id}`, 10, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please wait before uploading again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
     await connectDB();

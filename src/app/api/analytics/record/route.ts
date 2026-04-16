@@ -12,14 +12,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const {
-      cardsReviewed = 0,
-      cardsCorrect = 0,
-      studyMinutes = 0,
-      quizzesTaken = 0,
-      quizAvgScore = 0,
-      essaysWritten = 0,
-    } = body;
+    const clamp = (v: unknown, min: number, max: number) => {
+      const n = Number(v) || 0;
+      return Math.max(min, Math.min(max, Math.floor(n)));
+    };
+    const cardsReviewed = clamp(body.cardsReviewed, 0, 500);
+    const cardsCorrect = clamp(body.cardsCorrect, 0, 500);
+    const studyMinutes = clamp(body.studyMinutes, 0, 480);
+    const quizzesTaken = clamp(body.quizzesTaken, 0, 50);
+    const quizAvgScore = clamp(body.quizAvgScore, 0, 100);
+    const essaysWritten = clamp(body.essaysWritten, 0, 20);
 
     await connectDB();
 

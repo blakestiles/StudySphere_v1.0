@@ -4,10 +4,23 @@ import bcrypt from "bcryptjs";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { sendVerificationEmail } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json();
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await checkRateLimit(`register:${ip}`, 5, 60_000 * 15);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
+    }
+
+    const body = await request.json();
+    const name = body.name;
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : body.email;
+    const password = body.password;
 
     if (!name || !email || !password) {
       return NextResponse.json(

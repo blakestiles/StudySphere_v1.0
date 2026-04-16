@@ -64,6 +64,7 @@ export async function PATCH(request: Request) {
     }
 
     revalidateTag(TAGS.dashboard(session.user.id), "");
+    revalidateTag(TAGS.profile(session.user.id), "");
     return NextResponse.json({
       id: user._id,
       name: user.name,

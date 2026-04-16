@@ -18,5 +18,7 @@ const WeeklyReportSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+WeeklyReportSchema.index({ userId: 1, weekStart: 1, weekEnd: 1 }, { unique: true });
+
 const WeeklyReport = models.WeeklyReport || mongoose.model("WeeklyReport", WeeklyReportSchema);
 export default WeeklyReport;

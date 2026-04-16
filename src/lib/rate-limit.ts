@@ -1,22 +1,40 @@
-const store = new Map<string, { count: number; resetAt: number }>();
+import connectDB from "@/lib/db";
+import RateLimitEntry from "@/models/RateLimit";
 
-export function checkRateLimit(
+export async function checkRateLimit(
   identifier: string,
   limit: number,
   windowMs: number
-): { allowed: boolean; remaining: number; resetAt: number } {
-  const now = Date.now();
-  const entry = store.get(identifier);
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  await connectDB();
 
-  if (!entry || now > entry.resetAt) {
-    store.set(identifier, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1, resetAt: now + windowMs };
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + windowMs);
+
+  // Single atomic upsert: if a live window exists, increment; otherwise create one with count 1.
+  // Retry once on E11000 duplicate key (race between TTL cleanup and concurrent insert).
+  let entry;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      entry = await RateLimitEntry.findOneAndUpdate(
+        { key: identifier, expiresAt: { $gt: now } },
+        { $inc: { count: 1 }, $setOnInsert: { key: identifier, expiresAt } },
+        { upsert: true, returnDocument: "after" }
+      );
+      break;
+    } catch (err: any) {
+      if (err?.code === 11000 && attempt === 0) continue;
+      throw err;
+    }
   }
 
-  if (entry.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  if (entry.count > limit) {
+    return { allowed: false, remaining: 0, resetAt: entry.expiresAt.getTime() };
   }
 
-  entry.count++;
-  return { allowed: true, remaining: limit - entry.count, resetAt: entry.resetAt };
+  return {
+    allowed: true,
+    remaining: limit - entry.count,
+    resetAt: entry.expiresAt.getTime(),
+  };
 }

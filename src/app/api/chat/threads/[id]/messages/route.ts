@@ -8,6 +8,7 @@ import Document from "@/models/Document";
 import Topic from "@/models/Topic";
 import client from "@/lib/claude";
 import { sendMessageSchema } from "@/lib/validations/chat";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   _request: Request,
@@ -79,6 +80,14 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const rl = await checkRateLimit(`chat-message:${session.user.id}`, 20, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please wait before sending another message." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
+    }
+
     // Load study pack context if available
     let contextText = "";
     let packTitle = "";
@@ -86,7 +95,7 @@ export async function POST(
 
     if (thread.studyPackId) {
       const studyPack = await StudyPack.findById(thread.studyPackId).lean();
-      if (studyPack) {
+      if (studyPack && String((studyPack as any).userId) === session.user.id) {
         packTitle = studyPack.title as string;
         const [doc, topics] = await Promise.all([
           Document.findById(studyPack.documentId).lean(),

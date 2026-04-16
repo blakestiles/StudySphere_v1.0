@@ -6,12 +6,21 @@ import Document from "@/models/Document";
 import Topic from "@/models/Topic";
 import client from "@/lib/claude";
 import { tutorChatSchema } from "@/lib/validations/focus-session";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = await checkRateLimit(`tutor-chat:${session.user.id}`, 20, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please wait before sending another message." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
     const body = await request.json();

@@ -20,9 +20,9 @@ export const tutorChatSchema = z.object({
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant"]),
-      content: z.string(),
+      content: z.string().max(10000),
     })
-  ),
+  ).max(50),
 });
 
 export type CreateFocusSessionInput = z.infer<typeof createFocusSessionSchema>;

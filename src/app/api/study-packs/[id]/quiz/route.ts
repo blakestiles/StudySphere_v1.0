@@ -66,13 +66,21 @@ export async function POST(
 
     const { answers } = result.data;
 
+    // Deduplicate by questionId — only the first answer per question counts
+    const seen = new Set<string>();
+    const uniqueAnswers = answers.filter((a) => {
+      if (seen.has(a.questionId)) return false;
+      seen.add(a.questionId);
+      return true;
+    });
+
     // Look up all questions
-    const questionIds = answers.map((a) => a.questionId);
+    const questionIds = uniqueAnswers.map((a) => a.questionId);
     const questions = await QuizQuestion.find({ _id: { $in: questionIds }, studyPackId: id });
     const questionMap = new Map(questions.map((q: any) => [q._id.toString(), q]));
 
     let score = 0;
-    const responses = answers.map((a) => {
+    const responses = uniqueAnswers.map((a) => {
       const question = questionMap.get(a.questionId);
       const isCorrect = question ? question.correctAnswer === a.selectedAnswer : false;
       if (isCorrect) score++;
@@ -87,15 +95,18 @@ export async function POST(
       };
     });
 
+    // Use server-side question count as totalQuestions
+    const totalQuestions = questions.length;
+
     const attempt = await QuizAttempt.create({
       userId: session.user.id,
       studyPackId: id,
       score,
-      totalQuestions: answers.length,
+      totalQuestions,
       responses,
     });
 
-    return NextResponse.json({ attempt, score, totalQuestions: answers.length }, { status: 201 });
+    return NextResponse.json({ attempt, score, totalQuestions }, { status: 201 });
   } catch (error) {
     console.error("Submit quiz error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

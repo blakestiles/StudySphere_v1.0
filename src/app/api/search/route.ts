@@ -26,7 +26,8 @@ export async function GET(request: Request) {
     await connectDB();
 
     const userId = session.user.id;
-    const regex = { $regex: q, $options: "i" };
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = { $regex: escaped, $options: "i" };
 
     // Get all study pack IDs belonging to this user for scoping topic/flashcard searches
     const userStudyPacks = await StudyPack.find({ userId }).select("_id").lean();

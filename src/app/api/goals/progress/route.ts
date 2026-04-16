@@ -39,7 +39,7 @@ export async function GET() {
           }).lean();
           if (attempts.length > 0) {
             const avgScore =
-              attempts.reduce((sum, a) => sum + (a.score / a.totalQuestions) * 100, 0) /
+              attempts.reduce((sum, a) => sum + (a.totalQuestions > 0 ? (a.score / a.totalQuestions) * 100 : 0), 0) /
               attempts.length;
             currentValue = Math.round(avgScore);
           }

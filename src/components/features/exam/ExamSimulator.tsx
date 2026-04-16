@@ -55,6 +55,8 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
 
   // Active state
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [examId, setExamId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -104,20 +106,21 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
     const totalTime = duration * 60 - timeLeft;
 
     try {
-      await fetch("/api/exams/submit", {
+      const res = await fetch("/api/exams/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          examId,
           studyPackId: selectedPackId,
-          questions,
           responses,
           duration,
           timeTaken: totalTime,
           proctored,
         }),
       });
+      if (!res.ok) setSubmitError(true);
     } catch {
-      // Save failed but still show results
+      setSubmitError(true);
     }
 
     if (document.fullscreenElement) {
@@ -262,6 +265,7 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
       }
 
       const data = await res.json();
+      setExamId(data.examId ?? null);
       setQuestions(data.questions);
       setAnswers(new Array(data.questions.length).fill(null));
       timeSpentRef.current = new Array(data.questions.length).fill(0);
@@ -710,7 +714,13 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
   // ── COMPLETE PHASE ──
   if (phase === "complete" && examResult) {
     return (
-      <ExamResults
+      <>
+        {submitError && (
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            Your exam results could not be saved. The score shown below is based on your local answers.
+          </div>
+        )}
+        <ExamResults
         questions={examResult.questions}
         responses={examResult.responses}
         score={examResult.score}
@@ -733,6 +743,7 @@ export default function ExamSimulator({ studyPacks }: ExamSimulatorProps) {
           setPhase("setup");
         }}
       />
+      </>
     );
   }
 

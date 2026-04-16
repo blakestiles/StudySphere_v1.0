@@ -6,12 +6,21 @@ import StudyPack from "@/models/StudyPack";
 import Document from "@/models/Document";
 import EssayAttempt from "@/models/EssayAttempt";
 import { gradeEssaySchema } from "@/lib/validations/essay";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = await checkRateLimit(`essay-grade:${session.user.id}`, 5, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please wait before grading again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
     const body = await request.json();

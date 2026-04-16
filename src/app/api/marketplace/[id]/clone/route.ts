@@ -5,6 +5,7 @@ import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
 import Flashcard from "@/models/Flashcard";
 import QuizQuestion from "@/models/QuizQuestion";
+import ClozeQuestion from "@/models/ClozeQuestion";
 import Document from "@/models/Document";
 
 export async function POST(
@@ -63,6 +64,17 @@ export async function POST(
         }))
       );
       sourceTopics.forEach((t, i) => topicIdMap.set(t._id.toString(), clonedTopics[i]._id.toString()));
+      // Remap parentTopicId to cloned IDs
+      const bulkOps = clonedTopics
+        .map((nt, i) => {
+          const oldParent = sourceTopics[i].parentTopicId;
+          if (!oldParent) return null;
+          const newParent = topicIdMap.get(String(oldParent));
+          if (!newParent) return null;
+          return { updateOne: { filter: { _id: nt._id }, update: { $set: { parentTopicId: newParent } } } };
+        })
+        .filter(Boolean);
+      if (bulkOps.length > 0) await Topic.bulkWrite(bulkOps as any);
     }
 
     const sourceFlashcards = await Flashcard.find({ studyPackId: id }).lean();
@@ -86,6 +98,17 @@ export async function POST(
         options: q.options,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
+      })));
+    }
+
+    const sourceCloze = await ClozeQuestion.find({ studyPackId: id }).lean();
+    if (sourceCloze.length > 0) {
+      await ClozeQuestion.insertMany(sourceCloze.map((c: any) => ({
+        studyPackId: clonedPack._id,
+        topicId: (c.topicId && topicIdMap.get(c.topicId.toString())) ?? c.topicId,
+        originalText: c.originalText,
+        blankedText: c.blankedText,
+        answers: c.answers,
       })));
     }
 

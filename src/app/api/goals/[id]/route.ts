@@ -18,7 +18,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rl = checkRateLimit(`goal-update:${session.user.id}`, 10, 60_000);
+    const rl = await checkRateLimit(`goal-update:${session.user.id}`, 10, 60_000);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please wait before generating again." },

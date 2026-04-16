@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import connectDB from "@/lib/db";
 import ClozeQuestion from "@/models/ClozeQuestion";
+import StudyPack from "@/models/StudyPack";
 import { submitClozeSchema } from "@/lib/validations/cloze";
 
 export async function POST(request: Request) {
@@ -22,6 +23,10 @@ export async function POST(request: Request) {
 
     await connectDB();
 
+    // Pre-fetch user's study pack IDs for ownership validation
+    const userPacks = await StudyPack.find({ userId: session.user.id }).select("_id").lean();
+    const userPackIds = new Set(userPacks.map((p) => String(p._id)));
+
     const { questions } = result.data;
     let totalBlanks = 0;
     let correctBlanks = 0;
@@ -29,7 +34,7 @@ export async function POST(request: Request) {
     const results = await Promise.all(
       questions.map(async (q) => {
         const stored = await ClozeQuestion.findById(q.questionId);
-        if (!stored) {
+        if (!stored || !userPackIds.has(String(stored.studyPackId))) {
           return { questionId: q.questionId, error: "Not found" };
         }
 

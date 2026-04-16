@@ -6,12 +6,21 @@ import Topic from "@/models/Topic";
 import StudyEvent from "@/models/StudyEvent";
 import client from "@/lib/claude";
 import { generateStudyPlanSchema } from "@/lib/validations/study-event";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = await checkRateLimit(`study-plan:${session.user.id}`, 3, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please wait before generating again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+      );
     }
 
     const body = await request.json();
@@ -111,13 +120,7 @@ Return ONLY a JSON array (no markdown, no explanation) of events:
       studyPacks.map((sp) => [sp.title, sp._id.toString()])
     );
 
-    // Delete old AI-generated events for this user
-    await StudyEvent.deleteMany({
-      userId: session.user.id,
-      isAiGenerated: true,
-    });
-
-    // Bulk insert new events
+    // Insert new events first, then delete old ones (safe ordering)
     const eventDocs = events.map((e) => ({
       userId: session.user.id,
       studyPackId: titleToId.get(e.studyPackTitle) || undefined,
@@ -132,6 +135,13 @@ Return ONLY a JSON array (no markdown, no explanation) of events:
     }));
 
     const created = await StudyEvent.insertMany(eventDocs);
+
+    // Delete old AI-generated events (exclude the ones we just created)
+    await StudyEvent.deleteMany({
+      userId: session.user.id,
+      isAiGenerated: true,
+      _id: { $nin: created.map((e) => e._id) },
+    });
 
     return NextResponse.json({
       success: true,

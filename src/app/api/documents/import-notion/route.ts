@@ -39,14 +39,14 @@ export async function POST(request: Request) {
       "Content-Type": "application/json",
     };
 
-    const pageRes = await fetch(`https://api.notion.com/v1/pages/${formattedId}`, { headers });
+    const pageRes = await fetch(`https://api.notion.com/v1/pages/${formattedId}`, { headers, signal: AbortSignal.timeout(15_000) });
     if (!pageRes.ok) return NextResponse.json({ error: "Could not access Notion page. Check your token and page ID." }, { status: 400 });
     const page = await pageRes.json();
 
     const titleProp = Object.values(page.properties || {}).find((p: any) => p.type === "title") as any;
     const title = titleProp?.title?.[0]?.plain_text || "Notion Import";
 
-    const blocksRes = await fetch(`https://api.notion.com/v1/blocks/${formattedId}/children?page_size=100`, { headers });
+    const blocksRes = await fetch(`https://api.notion.com/v1/blocks/${formattedId}/children?page_size=100`, { headers, signal: AbortSignal.timeout(15_000) });
     if (!blocksRes.ok) return NextResponse.json({ error: "Could not read page content" }, { status: 400 });
     const blocksData = await blocksRes.json();
     // Note: Notion API does not inline nested blocks — only top-level block text is extracted.

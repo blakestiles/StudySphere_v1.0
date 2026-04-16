@@ -8,6 +8,18 @@ import StudyPack from "@/models/StudyPack";
 import Topic from "@/models/Topic";
 import Flashcard from "@/models/Flashcard";
 import QuizQuestion from "@/models/QuizQuestion";
+import ClozeQuestion from "@/models/ClozeQuestion";
+import Annotation from "@/models/Annotation";
+import QuizAttempt from "@/models/QuizAttempt";
+import ExamAttempt from "@/models/ExamAttempt";
+import FocusSession from "@/models/FocusSession";
+import StudyEvent from "@/models/StudyEvent";
+import EssayAttempt from "@/models/EssayAttempt";
+import ChatThread from "@/models/ChatThread";
+import ChatMessage from "@/models/ChatMessage";
+import CheatSheet from "@/models/CheatSheet";
+import Notebook from "@/models/Notebook";
+import WeakArea from "@/models/WeakArea";
 
 export async function GET(
   _req: NextRequest,
@@ -67,15 +79,37 @@ export async function DELETE(
     const studyPackIds = studyPacks.map((sp: { _id: unknown }) => sp._id);
 
     if (studyPackIds.length > 0) {
+      // Collect IDs for cascading deletes
+      const [threads, topics] = await Promise.all([
+        ChatThread.find({ studyPackId: { $in: studyPackIds } }).select("_id").lean(),
+        Topic.find({ studyPackId: { $in: studyPackIds } }).select("_id").lean(),
+      ]);
+      const threadIds = threads.map((t) => t._id);
+      const topicIds = topics.map((t) => t._id);
+
       await Promise.all([
         Topic.deleteMany({ studyPackId: { $in: studyPackIds } }),
         Flashcard.deleteMany({ studyPackId: { $in: studyPackIds } }),
         QuizQuestion.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        ClozeQuestion.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        QuizAttempt.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        ExamAttempt.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        FocusSession.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        StudyEvent.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        EssayAttempt.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        CheatSheet.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        Notebook.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        ChatThread.deleteMany({ studyPackId: { $in: studyPackIds } }),
+        ...(threadIds.length > 0 ? [ChatMessage.deleteMany({ threadId: { $in: threadIds } })] : []),
+        ...(topicIds.length > 0 ? [WeakArea.deleteMany({ topicId: { $in: topicIds } })] : []),
       ]);
       await StudyPack.deleteMany({ documentId: id, userId: session.user.id });
     }
 
-    await Document.findByIdAndDelete(id);
+    await Promise.all([
+      Annotation.deleteMany({ documentId: id, userId: session.user.id }),
+      Document.findByIdAndDelete(id),
+    ]);
 
     revalidateTag(TAGS.documents(session.user.id), "");
     revalidateTag(TAGS.dashboard(session.user.id), "");

@@ -33,6 +33,7 @@ export const TAGS = {
   notebooks:  (uid: string) => `nb:${uid}`,
   dashboard:  (uid: string) => `dash:${uid}`,
   reports:    (uid: string) => `wr:${uid}`,
+  profile:    (uid: string) => `profile:${uid}`,
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -24,8 +25,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           password: string;
         };
 
+        const normalizedEmail = email.trim().toLowerCase();
+        const rl = await checkRateLimit(`login:${normalizedEmail}`, 10, 60_000 * 15);
+        if (!rl.allowed) return null;
+
         await connectDB();
-        const user = await User.findOne({ email }).select("+password");
+        const user = await User.findOne({ email: normalizedEmail }).select("+password");
 
         if (!user || !user.password) {
           return null;

@@ -3,10 +3,20 @@ import crypto from "crypto";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await checkRateLimit(`forgot-password:${ip}`, 3, 60_000 * 15);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { message: "If that email exists, a reset link has been sent." }
+      );
+    }
+
+    const body = await request.json();
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : body.email;
 
     if (!email || typeof email !== "string") {
       return NextResponse.json(

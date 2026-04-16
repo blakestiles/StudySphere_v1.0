@@ -7,5 +7,7 @@ const WeakAreaSchema = new Schema({
   lastUpdated: { type: Date, default: Date.now },
 });
 
+WeakAreaSchema.index({ userId: 1, topicId: 1 }, { unique: true });
+
 const WeakArea = models.WeakArea || mongoose.model("WeakArea", WeakAreaSchema);
 export default WeakArea;
