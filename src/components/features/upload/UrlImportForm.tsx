@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Link, Loader2, CheckCircle2, Youtube } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UrlImportForm() {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -25,7 +27,7 @@ export default function UrlImportForm() {
       if (!res.ok) { toast.error(data.error || "Import failed"); return; }
       setDone(true);
       toast.success("Content imported successfully!");
-      setTimeout(() => { setUrl(""); setDone(false); }, 2000);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
       toast.error("Import failed. Please try again.");
     } finally {

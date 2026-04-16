@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpen, FileText, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 type Tab = "gdocs" | "notion";
 
 export default function NotionGDocsForm() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("gdocs");
 
   // Google Docs state
@@ -34,7 +36,7 @@ export default function NotionGDocsForm() {
       if (!res.ok) { toast.error(data.error || "Import failed"); return; }
       setGdocsDone(true);
       toast.success("Google Doc imported successfully!");
-      setTimeout(() => { setGdocsUrl(""); setGdocsDone(false); }, 2000);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
       toast.error("Import failed. Please try again.");
     } finally {
@@ -57,7 +59,7 @@ export default function NotionGDocsForm() {
       setNotionDone(true);
       toast.success("Notion page imported successfully!");
       if (data.warning) toast.info(data.warning);
-      setTimeout(() => { setNotionToken(""); setNotionPageId(""); setNotionDone(false); }, 2000);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
       toast.error("Import failed. Please try again.");
     } finally {

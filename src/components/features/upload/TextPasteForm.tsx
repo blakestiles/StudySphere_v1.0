@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 export default function TextPasteForm() {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,11 +42,7 @@ export default function TextPasteForm() {
 
       setDone(true);
       toast.success("Text saved successfully!");
-      setTimeout(() => {
-        setTitle("");
-        setContent("");
-        setDone(false);
-      }, 1500);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
       toast.error("Something went wrong");
     } finally {

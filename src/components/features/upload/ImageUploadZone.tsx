@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Upload, Image as ImageIcon, CheckCircle2, Loader2, CloudUpload } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 export default function ImageUploadZone() {
+  const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -47,6 +49,7 @@ export default function ImageUploadZone() {
       setProgress(100);
       setDone(true);
       toast.success("Image processed successfully!");
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch {
       toast.error("Upload failed. Please try again.");
     } finally {
