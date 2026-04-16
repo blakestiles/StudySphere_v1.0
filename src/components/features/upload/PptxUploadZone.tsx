@@ -59,7 +59,7 @@ export default function PptxUploadZone() {
         setFileName("");
       }, 2000);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- all captured values are stable state setters
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only captures state setters (always stable) and fetch (global)
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {

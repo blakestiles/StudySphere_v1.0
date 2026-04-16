@@ -11,7 +11,7 @@ class UserFacingError extends Error {}
 function isPrivateIP(ip: string): boolean {
   // Block loopback, link-local (AWS IMDS), RFC-1918, IPv4-mapped loopback, and IPv6 locals
   return /^127\./.test(ip) ||
-    ip === "0.0.0.0" ||
+    ip === "0.0.0.0" ||  // routes to localhost on many OS/kernel configs
     /^169\.254\./.test(ip) ||
     /^10\./.test(ip) ||
     /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
