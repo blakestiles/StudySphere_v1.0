@@ -13,7 +13,7 @@ export default function PptxUploadZone() {
   const [fileName, setFileName] = useState("");
   const [done, setDone] = useState(false);
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = useCallback(async (file: File) => {
     const isPptx =
       file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
       file.name.toLowerCase().endsWith(".pptx");
@@ -59,15 +59,15 @@ export default function PptxUploadZone() {
         setFileName("");
       }, 2000);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- all captured values are stable state setters
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleUpload(file);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleUpload]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

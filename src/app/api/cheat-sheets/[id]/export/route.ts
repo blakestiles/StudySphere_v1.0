@@ -203,6 +203,10 @@ export async function GET(
 
     const sections = parseMarkdown(sheet.content);
 
+    if (sections.length === 0) {
+      return NextResponse.json({ error: "Cheat sheet has no sections to export" }, { status: 422 });
+    }
+
     for (const section of sections) {
       const allBullets = section.bullets;
       const prose = section.prose;

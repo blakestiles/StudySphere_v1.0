@@ -9,7 +9,6 @@ import TextShimmer from "@/components/ui/text-shimmer";
 interface MarketplacePack {
   _id: string;
   title: string;
-  shareToken: string;
   summary: string;
   topicCount: number;
   authorName: string;

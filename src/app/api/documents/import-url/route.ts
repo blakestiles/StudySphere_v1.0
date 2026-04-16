@@ -9,13 +9,15 @@ import dns from "dns";
 class UserFacingError extends Error {}
 
 function isPrivateIP(ip: string): boolean {
-  // Block loopback, link-local (AWS IMDS), RFC-1918, and IPv6 locals
+  // Block loopback, link-local (AWS IMDS), RFC-1918, IPv4-mapped loopback, and IPv6 locals
   return /^127\./.test(ip) ||
+    ip === "0.0.0.0" ||
     /^169\.254\./.test(ip) ||
     /^10\./.test(ip) ||
     /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
     /^192\.168\./.test(ip) ||
     ip === "::1" ||
+    ip.startsWith("::ffff:127.") ||
     ip.startsWith("fc") ||
     ip.startsWith("fd");
 }
